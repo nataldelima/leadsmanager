@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lead Extractor — Google Maps</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+  <div id="loginScreen" class="login-screen">
+    <div class="login-card">
+      <div class="login-logo">🗺️</div>
+      <h1>Lead Extractor</h1>
+      <p class="login-sub">Entre com sua conta Google para acessar o sistema e a planilha.</p>
+
+      <div id="googleBtnWrapper" class="google-btn-wrapper">
+        <div id="g_id_signin_host"></div>
+      </div>
+      <p id="loginError" class="login-error hidden"></p>
+      <div class="login-config-hint">
+        <p><strong>Client ID</strong> OAuth (Google Cloud Console):</p>
+        <input type="text" id="loginClientId" placeholder="xxxxx.apps.googleusercontent.com">
+        <button type="button" id="btnApplyClientId" class="btn btn-primary" style="margin-top:10px;width:100%">Aplicar Client ID</button>
+        <p class="hint" style="margin-top:10px">Use http://localhost (servidor local), não abra o arquivo por file://. Cadastre a origem no Client ID.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="appRoot" class="app hidden">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">🗺️</div>
+        <div>
+          <h1>Lead Extractor</h1>
+          <p class="tagline">Google Maps → Sheets</p>
+        </div>
+      </div>
+      <nav class="nav">
+        <button class="nav-item active" data-view="dashboard"><span class="nav-icon">📊</span><span>Dashboard</span></button>
+        <button class="nav-item" data-view="leads"><span class="nav-icon">📋</span><span>Leads</span><span class="badge" id="navLeadCount">0</span></button>
+        <button class="nav-item" data-view="add"><span class="nav-icon">➕</span><span>Adicionar</span></button>
+        <button class="nav-item" data-view="templates"><span class="nav-icon">💬</span><span>Templates</span></button>
+        <button class="nav-item" data-view="import"><span class="nav-icon">📥</span><span>Importar</span></button>
+        <button class="nav-item" data-view="export"><span class="nav-icon">📤</span><span>Exportar / Sheets</span></button>
+        <button class="nav-item" data-view="settings"><span class="nav-icon">⚙️</span><span>Configurações</span></button>
+        <button class="nav-item" data-view="help"><span class="nav-icon">❓</span><span>Ajuda</span></button>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-info" id="userInfo">
+          <img id="userAvatar" class="user-avatar hidden" alt="">
+          <div>
+            <div id="userName" class="user-name"></div>
+            <div id="userEmail" class="user-email"></div>
+          </div>
+        </div>
+        <button id="btnLogout" class="btn btn-sm btn-outline" style="width:100%;margin-top:8px">Sair</button>
+        <div class="storage-info" style="margin-top:8px"><span id="storageInfo">Dados na planilha Google</span></div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="spinner"></div>
+        <p>Carregando da planilha...</p>
+      </div>
+
+      <section id="view-dashboard" class="view active">
+        <header class="view-header">
+          <div>
+            <h2>Dashboard</h2>
+            <p class="subtitle">Métricas, temperatura e follow-ups</p>
+          </div>
+          <button id="btnRefreshData" class="btn btn-outline">🔄 Atualizar da planilha</button>
+        </header>
+        <div class="metrics-grid" id="metricsGrid"></div>
+        <div class="dashboard-row">
+          <div class="dash-card">
+            <h3>Funil de contato</h3>
+            <div class="funnel" id="funnelChart"></div>
+          </div>
+          <div class="dash-card">
+            <h3>Follow-ups pendentes <span id="followUpDaysLabel" class="hint-inline"></span></h3>
+            <div id="followUpList" class="backlog-list"></div>
+          </div>
+        </div>
+        <div class="dashboard-row" style="margin-top:16px">
+          <div class="dash-card">
+            <h3>Por temperatura</h3>
+            <div id="tempChart" class="funnel"></div>
+          </div>
+          <div class="dash-card">
+            <h3>Próximos contatos (backlog)</h3>
+            <div id="backlogList" class="backlog-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-leads" class="view">
+        <header class="view-header">
+          <div>
+            <h2>Leads</h2>
+            <p class="subtitle">Fonte: planilha Google (sem localStorage)</p>
+          </div>
+          <div class="header-actions">
+            <div class="search-box"><input type="search" id="searchInput" placeholder="Buscar..."></div>
+            <select id="nicheFilter"><option value="all">Todos os nichos</option></select>
+            <select id="statusFilter">
+              <option value="all">Todos os status</option>
+              <option value="novo">Novo</option>
+              <option value="abordagem">Abordagem</option>
+              <option value="follow1">Follow 1</option>
+              <option value="follow2">Follow 2</option>
+              <option value="backlog">Backlog</option>
+              <option value="contatado">Contatado</option>
+              <option value="interessado">Interessado</option>
+              <option value="convertido">Convertido</option>
+              <option value="descartado">Descartado</option>
+            </select>
+            <select id="tempFilter">
+              <option value="all">Temperatura</option>
+              <option value="0">❄ 0</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">🔥 5</option>
+            </select>
+            <select id="whatsappFilter">
+              <option value="all">WhatsApp: todos</option>
+              <option value="yes">Com WhatsApp</option>
+              <option value="no">Sem WhatsApp</option>
+            </select>
+          </div>
+        </header>
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <span id="selectedCount" class="selected-count hidden">0 selecionados</span>
+            <button id="btnBulkStatus" class="btn btn-sm btn-outline hidden">Alterar status</button>
+            <button id="btnBulkDelete" class="btn btn-sm btn-danger-outline hidden">Excluir</button>
+          </div>
+          <div class="toolbar-right">
+            <button id="btnRefreshLeads" class="btn btn-sm btn-outline">🔄 Atualizar</button>
+          </div>
+        </div>
+        <div class="table-wrapper">
+          <table class="leads-table">
+            <thead>
+              <tr>
+                <th class="col-check"><input type="checkbox" id="selectAll"></th>
+                <th class="sortable" data-sort="name">Nome <span class="sort-ind"></span></th>
+                <th class="sortable" data-sort="category">Nicho <span class="sort-ind"></span></th>
+                <th class="sortable" data-sort="phone">Telefone / WA <span class="sort-ind"></span></th>
+                <th class="sortable" data-sort="temperature">Temp. <span class="sort-ind"></span></th>
+                <th class="sortable" data-sort="status">Status <span class="sort-ind"></span></th>
+                <th class="sortable" data-sort="lastContactAt">Último contato <span class="sort-ind"></span></th>
+                <th class="col-actions">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="leadsBody"></tbody>
+          </table>
+          <div id="pagination" class="pagination"></div>
+          <div id="emptyState" class="empty-state">
+            <div class="empty-icon">📭</div>
+            <h3>Nenhum lead na planilha</h3>
+            <p>Adicione, importe ou confira a URL do Web App.</p>
+            <button class="btn btn-primary" data-goto="add">Adicionar lead</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-add" class="view">
+        <header class="view-header">
+          <div>
+            <h2>Adicionar lead</h2>
+            <p class="subtitle">Salvo direto na planilha</p>
+          </div>
+        </header>
+        <div class="form-card">
+          <form id="leadForm">
+            <div class="form-grid">
+              <div class="form-group"><label for="fName">Nome *</label><input type="text" id="fName" required></div>
+              <div class="form-group"><label for="fCategory">Nicho / Categoria</label><input type="text" id="fCategory" placeholder="Ex: Restaurante"></div>
+              <div class="form-group full"><label for="fAddress">Endereço</label><input type="text" id="fAddress"></div>
+              <div class="form-group"><label for="fPhone">Telefone</label><input type="text" id="fPhone"></div>
+              <div class="form-group"><label class="checkbox-label"><input type="checkbox" id="fHasWhatsApp" checked> Tem WhatsApp</label></div>
+              <div class="form-group"><label for="fEmail">E-mail</label><input type="email" id="fEmail"></div>
+              <div class="form-group"><label for="fWebsite">Website</label><input type="url" id="fWebsite"></div>
+              <div class="form-group"><label for="fRating">Nota</label><input type="text" id="fRating" placeholder="4.5"></div>
+              <div class="form-group"><label for="fReviews">Nº Avaliações</label><input type="text" id="fReviews"></div>
+              <div class="form-group"><label for="fHours">Horários</label><input type="text" id="fHours"></div>
+              <div class="form-group">
+                <label for="fStatus">Status</label>
+                <select id="fStatus">
+                  <option value="novo">Novo</option>
+                  <option value="abordagem">Abordagem</option>
+                  <option value="follow1">Follow 1</option>
+                  <option value="follow2">Follow 2</option>
+                  <option value="backlog">Backlog</option>
+                  <option value="contatado">Contatado</option>
+                  <option value="interessado">Interessado</option>
+                  <option value="convertido">Convertido</option>
+                  <option value="descartado">Descartado</option>
+                </select>
+              </div>
+              <div class="form-group full"><label for="fNotes">Observações</label><textarea id="fNotes" rows="3"></textarea></div>
+            </div>
+            <p class="hint">Temperatura 0–5 calculada automaticamente pelos dados.</p>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">Salvar na planilha</button>
+              <button type="reset" class="btn btn-outline">Limpar</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section id="view-templates" class="view">
+        <header class="view-header">
+          <div>
+            <h2>Templates</h2>
+            <p class="subtitle">{{nome}} {{categoria}} {{endereco}} {{telefone}}</p>
+          </div>
+          <button id="btnNewTemplate" class="btn btn-primary">+ Novo</button>
+        </header>
+        <div id="templatesList" class="templates-list"></div>
+      </section>
+
+      <section id="view-import" class="view">
+        <header class="view-header">
+          <div>
+            <h2>Importar</h2>
+            <p class="subtitle">Envia direto para a planilha</p>
+          </div>
+        </header>
+        <div class="form-card">
+          <div class="import-zone" id="dropZone">
+            <div class="import-icon">📁</div>
+            <p><strong>Arraste um arquivo</strong> ou clique</p>
+            <input type="file" id="fileInput" accept=".json,.csv,text/csv,application/json" hidden>
+          </div>
+          <div class="or-divider"><span>ou</span></div>
+          <div class="form-group">
+            <label for="pasteJson">Colar JSON / CSV</label>
+            <textarea id="pasteJson" rows="8"></textarea>
+          </div>
+          <div class="form-actions">
+            <button id="btnImportPaste" class="btn btn-primary">Importar para a planilha</button>
+          </div>
+          <div id="importResult" class="import-result hidden"></div>
+        </div>
+      </section>
+
+      <section id="view-export" class="view">
+        <header class="view-header">
+          <div>
+            <h2>Exportar / Sheets</h2>
+            <p class="subtitle">Backup local ou testar conexão</p>
+          </div>
+        </header>
+        <div class="cards-grid">
+          <div class="action-card">
+            <div class="action-icon">📄</div>
+            <h3>Baixar CSV</h3>
+            <button id="btnExportCsv" class="btn btn-primary">Baixar CSV</button>
+          </div>
+          <div class="action-card">
+            <div class="action-icon">🧾</div>
+            <h3>Baixar JSON</h3>
+            <button id="btnExportJson" class="btn btn-primary">Baixar JSON</button>
+          </div>
+          <div class="action-card">
+            <div class="action-icon">📊</div>
+            <h3>Planilha</h3>
+            <button id="btnTestSheets" class="btn btn-outline">Testar conexão</button>
+            <button id="btnRefreshData2" class="btn btn-primary" style="margin-top:8px">Recarregar leads</button>
+            <p id="sheetsSyncStatus" class="hint" style="margin-top:8px"></p>
+          </div>
+        </div>
+        <div class="form-card" style="margin-top:24px">
+          <p id="sheetsConnectionStatus" class="hint">Configure a URL do Web App em Configurações.</p>
+        </div>
+      </section>
+
+      <section id="view-settings" class="view">
+        <header class="view-header">
+          <div>
+            <h2>Configurações</h2>
+            <p class="subtitle">Google, planilha e follow-up</p>
+          </div>
+        </header>
+        <div class="form-card">
+          <h3 style="margin-bottom:12px;font-size:15px">Login Google</h3>
+          <div class="form-group">
+            <label for="googleClientId">Client ID (OAuth)</label>
+            <input type="text" id="googleClientId" placeholder="xxxxx.apps.googleusercontent.com">
+            <p class="hint">Google Cloud Console → Credenciais → ID do cliente OAuth (Web). Origens autorizadas: URL do sistema ou http://localhost.</p>
+          </div>
+          <hr class="divider">
+          <h3 style="margin-bottom:12px;font-size:15px">Google Sheets</h3>
+          <div class="form-group">
+            <label for="sheetsWebAppUrl">URL do Web App</label>
+            <input type="url" id="sheetsWebAppUrl" placeholder="https://script.google.com/macros/s/XXXX/exec">
+          </div>
+          <div class="form-group">
+            <label for="sheetsName">Nome da aba</label>
+            <input type="text" id="sheetsName" value="leads">
+          </div>
+          <hr class="divider">
+          <h3 style="margin-bottom:12px;font-size:15px">Follow-up</h3>
+          <div class="form-group">
+            <label for="followUpDays">Dias para follow-up pendente</label>
+            <input type="number" id="followUpDays" min="1" max="365" value="3">
+            <p class="hint">Dashboard lista leads no funil cujo último contato foi há pelo menos N dias.</p>
+          </div>
+          <div class="form-group">
+            <label for="backlogMonths">Após Follow 2 → backlog (meses)</label>
+            <input type="number" id="backlogMonths" min="1" max="240" value="180">
+          </div>
+          <div class="form-group">
+            <label for="defaultCountry">Código país WhatsApp</label>
+            <input type="text" id="defaultCountry" value="55">
+          </div>
+          <div class="form-group">
+            <label><input type="checkbox" id="defaultHasWhatsApp" checked> Novos leads com WhatsApp</label>
+          </div>
+          <div class="form-group">
+            <label><input type="checkbox" id="confirmDelete" checked> Confirmar exclusão</label>
+          </div>
+          <div class="form-actions">
+            <button id="btnSaveSettings" class="btn btn-primary">Salvar configurações</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-help" class="view">
+        <header class="view-header">
+          <div>
+            <h2>Ajuda</h2>
+            <p class="subtitle">Login, planilha e temperatura</p>
+          </div>
+        </header>
+        <div class="help-cards">
+          <div class="help-card">
+            <h3>Temperatura 0–5 (sites / landing)</h3>
+            <p>+1 telefone · +1 WhatsApp · <strong>+2 sem site ou site fraco</strong> (Instagram, Linktree, etc.) · +1 nota ≥ 4,0 e ≥ 20 avaliações · +1 nicho digital-dependente (máx. 5).</p>
+          </div>
+          <div class="help-card">
+            <h3>Sem localStorage de leads</h3>
+            <p>Tudo na planilha. Só configurações/templates ficam no navegador.</p>
+          </div>
+          <div class="help-card">
+            <h3>Login Google</h3>
+            <p>Obrigatório para usar o app. Restrinja e-mails em Code.gs (ALLOWED_EMAILS) se quiser.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="editModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <header class="modal-header"><h3>Editar lead</h3><button class="modal-close" id="modalClose">&times;</button></header>
+      <form id="editForm">
+        <input type="hidden" id="editId">
+        <div class="form-grid">
+          <div class="form-group"><label for="eName">Nome *</label><input type="text" id="eName" required></div>
+          <div class="form-group"><label for="eCategory">Nicho</label><input type="text" id="eCategory"></div>
+          <div class="form-group full"><label for="eAddress">Endereço</label><input type="text" id="eAddress"></div>
+          <div class="form-group"><label for="ePhone">Telefone</label><input type="text" id="ePhone"></div>
+          <div class="form-group"><label class="checkbox-label"><input type="checkbox" id="eHasWhatsApp"> Tem WhatsApp</label></div>
+          <div class="form-group"><label for="eEmail">E-mail</label><input type="email" id="eEmail"></div>
+          <div class="form-group"><label for="eWebsite">Website</label><input type="url" id="eWebsite"></div>
+          <div class="form-group"><label for="eRating">Nota</label><input type="text" id="eRating"></div>
+          <div class="form-group"><label for="eReviews">Avaliações</label><input type="text" id="eReviews"></div>
+          <div class="form-group"><label for="eHours">Horários</label><input type="text" id="eHours"></div>
+          <div class="form-group">
+            <label for="eStatus">Status</label>
+            <select id="eStatus">
+              <option value="novo">Novo</option>
+              <option value="abordagem">Abordagem</option>
+              <option value="follow1">Follow 1</option>
+              <option value="follow2">Follow 2</option>
+              <option value="backlog">Backlog</option>
+              <option value="contatado">Contatado</option>
+              <option value="interessado">Interessado</option>
+              <option value="convertido">Convertido</option>
+              <option value="descartado">Descartado</option>
+            </select>
+          </div>
+          <div class="form-group"><label for="eNextContact">Próximo contato</label><input type="date" id="eNextContact"></div>
+          <div class="form-group full"><label for="eNotes">Observações</label><textarea id="eNotes" rows="3"></textarea></div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Salvar na planilha</button>
+          <button type="button" class="btn btn-outline" id="modalCancel">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="waModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <header class="modal-header"><h3>Enviar WhatsApp</h3><button class="modal-close" id="waModalClose">&times;</button></header>
+      <div class="form-group"><label>Lead</label><p id="waLeadName" class="wa-lead-name"></p></div>
+      <div class="form-group"><label for="waTemplateSelect">Template</label><select id="waTemplateSelect"></select></div>
+      <div class="form-group"><label for="waMessagePreview">Mensagem</label><textarea id="waMessagePreview" rows="8"></textarea></div>
+      <div class="form-actions">
+        <button type="button" id="btnOpenWhatsApp" class="btn btn-primary">📱 Abrir WhatsApp</button>
+        <button type="button" id="btnMarkSent" class="btn btn-outline">Marcar como enviado</button>
+        <button type="button" class="btn btn-outline" id="waModalCancel">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="templateModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <header class="modal-header"><h3 id="templateModalTitle">Novo template</h3><button class="modal-close" id="templateModalClose">&times;</button></header>
+      <form id="templateForm">
+        <input type="hidden" id="templateId">
+        <div class="form-group"><label for="tName">Nome</label><input type="text" id="tName" required></div>
+        <div class="form-group">
+          <label for="tKey">Tipo</label>
+          <select id="tKey">
+            <option value="abordagem">Abordagem</option>
+            <option value="follow1">Follow 1</option>
+            <option value="follow2">Follow 2</option>
+            <option value="custom">Outro</option>
+          </select>
+        </div>
+        <div class="form-group"><label for="tBody">Mensagem</label><textarea id="tBody" rows="10" required></textarea></div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Salvar</button>
+          <button type="button" class="btn btn-outline" id="templateModalCancel">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="app.js"></script>
+</body>
+</html>
