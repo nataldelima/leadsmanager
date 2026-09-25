@@ -1,12 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="0875bd88-de28-4631-bce8-d67388066a82" name="Changes" comment="" />
+    <list default="true" id="0875bd88-de28-4631-bce8-d67388066a82" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/assets/css/chota-base.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/assets/css/chota-card.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/assets/css/chota-dropdown.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/assets/css/chota-form.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/assets/css/chota-grid.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/assets/css/chota-nav.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/assets/css/chota-tab.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/assets/css/chota-tag.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/assets/css/chota-util.css" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/assets/css/chota.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app.js" beforeDir="false" afterPath="$PROJECT_DIR$/assets/js/app.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/assets/css/styles.css" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "nataldelima"
+  }
+}]]></component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/nataldelima/leadsmanager.git",
+    "accountId": "f055517f-1f2a-420d-b2f5-13b2309911e5"
+  }
+}]]></component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 1,
   &quot;fromUser&quot;: false
@@ -22,17 +53,30 @@
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.readMode.enableVisualFormatting": "true",
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "cidr.known.project.marker": "true",
     "codeWithMe.voiceChat.enabledByDefault": "false",
+    "git-widget-placeholder": "main",
     "javascript.preferred.runtime.type.id": "node",
-    "last_opened_file_path": "/home/natal/Documentos/Projetos/Extensões/leadsExtractor",
+    "last_opened_file_path": "/home/natal/Documentos/Projetos/Sites/Leads/lead-extractor-web/assets/css",
     "nodejs_package_manager_path": "npm",
     "settings.editor.selected.configurable": "preferences.pluginManager",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/assets/css" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/assets/img" />
+      <recent name="$PROJECT_DIR$/assets/js" />
+      <recent name="$PROJECT_DIR$/assets/css" />
+    </key>
+  </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -49,6 +93,7 @@
       <updated>1790283425793</updated>
       <workItem from="1790283429063" duration="4000" />
       <workItem from="1790283462950" duration="2245000" />
+      <workItem from="1790355354493" duration="1133000" />
     </task>
     <servers />
   </component>
