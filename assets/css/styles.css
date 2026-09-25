@@ -1345,3 +1345,252 @@ th.sortable .sort-ind { font-size: 11px; opacity: 0.9; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #c8cdd6; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+
+/* =========================================================
+   PWA — Instalação e atualização
+   ========================================================= */
+
+.pwa-install-btn {
+  width: 100%;
+  margin-top: 10px;
+  justify-content: center;
+  font-size: 12.5px;
+  padding: 8px 12px;
+}
+
+/* Banner de update */
+.pwa-update-banner {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fff;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--brand-gold);
+  border-radius: 10px;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  box-shadow: var(--shadow-lg);
+  z-index: 1500;
+  animation: slideUp 0.25s ease;
+  max-width: calc(100vw - 32px);
+}
+
+/* Hint iOS */
+.pwa-ios-hint {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  background: var(--brand-navy);
+  color: #fff;
+  padding: 14px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  box-shadow: var(--shadow-lg);
+  z-index: 1500;
+  border-left: 4px solid var(--brand-gold);
+  animation: slideUp 0.3s ease;
+  text-align: center;
+}
+.pwa-ios-hint strong { color: var(--brand-gold); }
+.pwa-ios-hint em { font-style: normal; font-weight: 600; }
+
+/* Mobile */
+@media (max-width: 900px) {
+  /* Esconde o botão do footer e deixa fixo flutuante */
+  .sidebar-footer .pwa-install-btn {
+    position: fixed;
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    width: auto;
+    z-index: 1500;
+    margin: 0;
+    box-shadow: var(--shadow-lg);
+    background: var(--brand-gold);
+    color: var(--brand-navy);
+    border-color: var(--brand-gold);
+    font-weight: 700;
+    padding: 12px 18px;
+    font-size: 14px;
+  }
+  .sidebar-footer .pwa-install-btn:hover {
+    background: var(--brand-gold-dark);
+    border-color: var(--brand-gold-dark);
+  }
+
+  .pwa-update-banner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    transform: none;
+  }
+  .pwa-update-banner .btn { width: 100%; }
+}
+
+/* =========================================================
+   ANTI-CLS — reserva de espaço + estabilidade visual
+   ========================================================= */
+
+/* 1. Reserva altura mínima para evitar salto login → app */
+html, body {
+  min-height: 100vh;
+  overflow-y: scroll; /* evita barra de rolagem aparecer/sumir */
+}
+
+/* 2. Reserva espaço do avatar (era o culpado #1) */
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  aspect-ratio: 1 / 1;
+  background: var(--brand-navy-line);
+  flex-shrink: 0;
+}
+.user-avatar.hidden {
+  display: none; /* não reserva espaço quando oculto */
+}
+
+/* 3. Dashboard: reserva altura nos blocos que renderizam via JS */
+.metrics-grid {
+  min-height: 96px; /* 6 cards em 1 linha ~= 90px */
+}
+.dash-card {
+  min-height: 240px;
+}
+#funnelChart,
+#tempChart,
+#followUpList,
+#backlogList {
+  min-height: 160px;
+}
+
+/* 4. Tabela de leads: reserva altura */
+.table-wrapper {
+  min-height: 320px;
+}
+#leadsBody:empty::after {
+  content: "";
+  display: block;
+  min-height: 200px;
+}
+
+/* 5. Evita reflow durante loading */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(247, 248, 250, 0.85);
+  backdrop-filter: blur(2px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  gap: 12px;
+  /* Anti-CLS: esconde sem afetar layout */
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+.loading-overlay.hidden {
+  display: none;
+  opacity: 0;
+}
+
+/* 6. Fonte com fallback métrico similar (anti-FOUT) */
+body {
+  font-family:
+          'Inter',                                     /* webfont */
+          -apple-system, BlinkMacSystemFont,
+          'Segoe UI', Roboto, Oxygen, Ubuntu,
+          'Helvetica Neue', Arial, sans-serif;         /* fallback nativo */
+  font-synthesis: none;
+}
+
+/* 7. Bloqueia quebra de linha em valores curtos */
+.metric-value,
+.funnel-count,
+.page-num,
+.temp-badge {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 8. Reserva altura para imagens (evita "pulo" ao carregar) */
+img:not(.user-avatar):not(.logo img) {
+  aspect-ratio: attr(width) / attr(height);
+}
+
+/* =========================================================
+   ACESSIBILIDADE — contraste WCAG AA
+   ========================================================= */
+
+/* Dourado puro (#f0b429) sobre branco = 2.1:1 → REPROVADO
+   Substituir por tons mais escuros em TEXTO: */
+
+/* 1. Texto dourado em fundo claro → use gold-dark */
+.template-key,
+.phone-link,
+.web-link,
+.steps a,
+.help-card code,
+.selected-count {
+  color: #8a5a00; /* gold escuro com contraste 5.8:1 em branco */
+}
+
+/* 2. Rótulos de métricas, dicas e subtítulos */
+.metric-label,
+.hint,
+.subtitle,
+.hint-inline,
+.backlog-item .date,
+.empty-mini {
+  color: #4b5563; /* era #6b7280 = 4.8:1, agora 7.0:1 */
+}
+
+/* 3. Status "backlog" e "novo" com fundo muito claro */
+.status-backlog {
+  background: #d1d5db;
+  color: #1f2937;
+}
+.status-novo {
+  background: #d1d5db;
+  color: #1f2937;
+}
+
+/* 4. Temp badge frio (azul muito claro) */
+.temp-0, .temp-1 {
+  background: #bfdbfe;
+  color: #1e3a8a;
+}
+
+/* 5. WA badge e wa-link */
+.wa-badge,
+.wa-link {
+  background: #d1fae5; /* ligeiramente mais escuro */
+  color: #065f46;      /* mais escuro que #128c4a */
+}
+.wa-link {
+  background: transparent;
+  color: #065f46;
+}
+
+/* 6. Botão dourado: texto navy já passa, mas reforce */
+.btn-primary {
+  color: #0f172a; /* navy ligeiramente mais escuro */
+}
+
+/* 7. Sidebar: e-mail do usuário */
+.user-email,
+.storage-info {
+  color: #cbd5e1; /* era #8b95a8 = 3.4:1, agora 6.8:1 */
+}
+
+/* 8. Tags no sidebar (nav)
+   era #b7bdcb em navy = 5.6:1 ok, mas hover fica fino */
+.nav-item:hover { color: #ffffff; }

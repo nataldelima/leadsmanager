@@ -4,14 +4,42 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lead Extractor — Google Maps</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1a2030">
+  <meta name="description" content="Gestor de leads capturados do Google Maps.">
+
+  <!-- Segurança (funcionam só em produção com HTTPS) -->
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+
+  <!-- Cor da barra de status (iOS) -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <!-- Cor de tema adaptativa -->
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#1a2030">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f1117">
+
+  <!-- Ícones -->
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/img/lead-manager-192.png">
+  <link rel="icon" type="image/svg+xml" href="assets/img/logo.svg">
+
   <!-- Chota -->
   <link rel="stylesheet" href="assets/css/chota.css">
+
   <!-- Tema da marca -->
   <link rel="stylesheet" href="assets/css/styles.css">
+
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="icon" href="assets/img/icon48.png" type="image/png">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'">
+  <noscript>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  </noscript>
+
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
@@ -452,5 +480,7 @@
 
   <div id="toast" class="toast hidden"></div>
   <script src="assets/js/app.js"></script>
+  <script src="assets/js/pwa.js"></script>
+</body>
 </body>
 </html>

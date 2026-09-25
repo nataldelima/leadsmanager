@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- Fundo navy cobrindo tudo (safe zone do maskable) -->
+  <rect width="128" height="128" fill="#1a2030"/>
+
+  <!-- Conteúdo encolhido em 80% para caber na safe zone -->
+  <g transform="translate(64 64) scale(0.8) translate(-64 -64)">
+    <!-- Pessoa -->
+    <circle cx="64" cy="30" r="6" fill="#ffffff"/>
+    <path d="M 52 44 Q 52 38 64 38 Q 76 38 76 44"
+          fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/>
+
+    <!-- Funil -->
+    <path d="M 40 52 L 88 52 L 74 82 L 74 96 L 54 96 L 54 82 Z"
+          fill="none" stroke="#f0b429" stroke-width="2.8"
+          stroke-linejoin="round" stroke-linecap="round"/>
+  </g>
+</svg>

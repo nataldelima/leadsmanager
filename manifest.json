@@ -1,0 +1,72 @@
+{
+  "id": "/lead-extractor-web/index.html",
+  "name": "Lead Manager — Natal de Lima",
+  "short_name": "Lead Manager",
+  "description": "Gestor de leads capturados do Google Maps. Dashboard, follow-up e WhatsApp integrados.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#1a2030",
+  "theme_color": "#1a2030",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "assets/img/lead-manager-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/img/lead-manager-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/img/lead-manager-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "assets/img/lead-manager-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "assets/img/screenshot-desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Dashboard com métricas e funil de contato"
+    },
+    {
+      "src": "assets/img/screenshot-mobile.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "label": "Tela de leads em dispositivos móveis"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Novo lead",
+      "short_name": "Novo",
+      "description": "Adicionar um lead manualmente",
+      "url": "./index.html#add",
+      "icons": [{ "src": "assets/img/lead-manager-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "url": "./index.html#dashboard",
+      "icons": [{ "src": "assets/img/lead-manager-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
