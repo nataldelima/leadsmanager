@@ -2,21 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="0875bd88-de28-4631-bce8-d67388066a82" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/assets/css/chota-base.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/assets/css/chota-card.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/assets/css/chota-dropdown.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/assets/css/chota-form.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/assets/css/chota-grid.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/assets/css/chota-nav.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/assets/css/chota-tab.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/assets/css/chota-tag.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/assets/css/chota-util.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/assets/css/chota.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app.js" beforeDir="false" afterPath="$PROJECT_DIR$/assets/js/app.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/index.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/assets/css/styles.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/assets/css/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/assets/css/styles.css" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -93,8 +80,17 @@
       <updated>1790283425793</updated>
       <workItem from="1790283429063" duration="4000" />
       <workItem from="1790283462950" duration="2245000" />
-      <workItem from="1790355354493" duration="1133000" />
+      <workItem from="1790355354493" duration="2240000" />
     </task>
+    <task id="LOCAL-00001" summary="Mudança na identidade visual">
+      <option name="closed" value="true" />
+      <created>1790356618518</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1790356618518</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -102,5 +98,7 @@
   </component>
   <component name="VcsManagerConfiguration">
     <option name="CLEAR_INITIAL_COMMIT_MESSAGE" value="true" />
+    <MESSAGE value="Mudança na identidade visual" />
+    <option name="LAST_COMMIT_MESSAGE" value="Mudança na identidade visual" />
   </component>
 </project>

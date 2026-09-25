@@ -956,23 +956,388 @@ th.sortable .sort-ind { font-size: 11px; opacity: 0.9; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ---------- 19. RESPONSIVE ---------- */
+
+/* ---------- 19.1 Tablet / Laptop pequeno (≤ 1200px) ---------- */
+@media (max-width: 1200px) {
+  .main { padding: 24px; }
+  .header-actions { gap: 8px; }
+  .search-box input { width: 200px; }
+}
+
+/* ---------- 19.2 Tablet vertical / Mobile grande (≤ 900px) ---------- */
 @media (max-width: 900px) {
-  .app { flex-direction: column; }
-  .sidebar { width: 100%; height: auto; position: relative; border-right: none; border-bottom: 3px solid var(--brand-gold); }
-  .nav { flex-direction: row; flex-wrap: wrap; padding: 8px; }
-  .nav-item { flex: 1 1 auto; justify-content: center; font-size: 12px; padding: 8px; }
+  /* --- Layout base --- */
+  .app {
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: relative;
+    border-right: none;
+    border-bottom: 3px solid var(--brand-gold);
+    overflow: hidden;
+  }
+
+  .sidebar-header {
+    padding: 14px 16px;
+  }
+  .sidebar-header h1 { font-size: 14px; }
+  .tagline { font-size: 10px; letter-spacing: 0.6px; }
+
+  /* Nav horizontal com scroll suave */
+  .nav {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    padding: 8px;
+    gap: 4px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  .nav::-webkit-scrollbar { height: 4px; }
+  .nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+  .nav-item {
+    flex: 0 0 auto;
+    font-size: 12px;
+    padding: 8px 12px;
+    white-space: nowrap;
+    border-radius: 6px;
+  }
+  .nav-item .nav-icon { font-size: 14px; width: 18px; }
   .nav-item .badge { display: none; }
-  .sidebar-footer { display: none; }
-  .main { padding: 16px; }
+
+  /* Footer compacto */
+  .sidebar-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    gap: 10px;
+  }
+  .sidebar-footer .user-info { flex: 1; min-width: 0; }
+  .sidebar-footer .user-email { max-width: 140px; }
+  .sidebar-footer .storage-info { display: none; }
+  .sidebar-footer #btnLogout {
+    width: auto !important;
+    margin: 0 !important;
+    padding: 6px 12px;
+    flex-shrink: 0;
+  }
+
+  .main {
+    padding: 16px;
+    max-width: 100%;
+  }
+
+  /* --- View header --- */
+  .view-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .view-header > div:first-child { min-width: 0; }
+  .view-header h2 { font-size: 20px; }
+  .view-header > button,
+  .view-header > .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Filtros da tela de leads */
+  .header-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .header-actions .search-box { grid-column: 1 / -1; }
+  .header-actions .search-box input { width: 100%; }
+  .header-actions select { width: 100%; }
+
+  /* --- Grids --- */
   .form-grid { grid-template-columns: 1fr; }
-  .search-box input { width: 100%; }
   .dashboard-row { grid-template-columns: 1fr; }
-  .leads-table th:nth-child(3),
-  .leads-table td:nth-child(3),
-  .leads-table th:nth-child(5),
-  .leads-table td:nth-child(5),
-  .leads-table th:nth-child(6),
-  .leads-table td:nth-child(6) { display: none; }
+  .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+
+  /* --- Toolbar --- */
+  .toolbar {
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+    min-height: auto;
+  }
+  .toolbar-left,
+  .toolbar-right {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  /* ============================================
+     TABELA VIRA CARDS NO MOBILE
+     ============================================ */
+  .table-wrapper {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+    overflow: visible;
+    min-height: 0;
+  }
+
+  .leads-table,
+  .leads-table tbody,
+  .leads-table tr,
+  .leads-table td {
+    display: block;
+    width: 100%;
+  }
+  .leads-table thead { display: none; }
+
+  .leads-table tr {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--brand-gold);
+    border-radius: var(--radius);
+    margin-bottom: 12px;
+    padding: 14px;
+    box-shadow: 0 1px 2px rgba(26, 32, 48, 0.04);
+    position: relative;
+    transition: box-shadow 0.15s;
+  }
+  .leads-table tr:hover { box-shadow: 0 4px 12px rgba(26, 32, 48, 0.08); }
+
+  .leads-table td {
+    padding: 6px 0;
+    border: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    text-align: right;
+    font-size: 13px;
+    min-width: 0;
+  }
+
+  /* Rótulos dinâmicos por coluna */
+  .leads-table td::before {
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    text-align: left;
+    flex-shrink: 0;
+  }
+
+  /* Checkbox no canto superior direito */
+  .leads-table td.col-check {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    padding: 0;
+    width: auto;
+    display: block;
+    z-index: 1;
+  }
+  .leads-table td.col-check::before { content: none; }
+  .leads-table td.col-check input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--brand-gold);
+  }
+
+  /* Nome ocupa o topo do card */
+  .leads-table td:nth-child(2) {
+    padding-right: 32px;
+    padding-bottom: 10px;
+    padding-top: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+    display: block;
+    text-align: left;
+  }
+  .leads-table td:nth-child(2)::before { content: none; }
+  .leads-table td:nth-child(2) .lead-name { font-size: 14px; }
+  .leads-table td:nth-child(2) .lead-name small { font-size: 12px; }
+
+  /* Rótulos das demais colunas */
+  .leads-table td:nth-child(3)::before { content: "Nicho"; }
+  .leads-table td:nth-child(4)::before { content: "Telefone"; }
+  .leads-table td:nth-child(5)::before { content: "Temperatura"; }
+  .leads-table td:nth-child(6)::before { content: "Status"; }
+  .leads-table td:nth-child(7)::before { content: "Últ. contato"; }
+
+  /* Ações no rodapé do card */
+  .leads-table td.col-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding-top: 10px;
+    padding-bottom: 0;
+    margin-top: 8px;
+    border-top: 1px solid var(--border);
+    width: 100%;
+  }
+  .leads-table td.col-actions::before { content: none; }
+  .leads-table td.col-actions .btn-icon {
+    background: var(--brand-bg);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 15px;
+    min-width: 36px;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Empty state adaptado */
+  .empty-state { padding: 40px 20px; }
+  .empty-icon { font-size: 40px; }
+  .empty-state h3 { font-size: 16px; }
+  .empty-state p { font-size: 13px; }
+
+  /* Pagination em bloco */
+  .pagination {
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    border-radius: var(--radius);
+    background: #fff;
+    border: 1px solid var(--border);
+    margin-top: 4px;
+  }
+  .pagination-info { font-size: 12px; }
+  .pagination-controls {
+    width: 100%;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .page-size-label { display: none; }
+  .page-num { min-width: 60px; font-size: 12px; padding: 0 6px; }
+  .pagination .btn-sm { padding: 8px 12px; font-size: 12px; }
+
+  /* --- Cards e formulários --- */
+  .form-card {
+    padding: 18px;
+    max-width: 100%;
+  }
+  .cards-grid { grid-template-columns: 1fr; }
+  .action-card { padding: 18px; }
+
+  /* --- Modal virou bottom-sheet --- */
+  .modal {
+    padding: 0;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .modal-content {
+    max-width: 100%;
+    max-height: 92vh;
+    border-radius: 16px 16px 0 0;
+    padding: 20px 18px;
+    animation: slideUpSheet 0.25s ease;
+  }
+  @keyframes slideUpSheet {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+  .modal-header h3 { font-size: 16px; }
+  .modal-header { margin-bottom: 16px; }
+
+  .form-actions {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+  .form-actions .btn { width: 100%; }
+
+  /* --- Login --- */
+  .login-card { padding: 28px 22px; }
+  .login-logo { width: 64px; height: 64px; margin-bottom: 14px; }
+  .login-card h1 { font-size: 20px; }
+  .login-sub { font-size: 13px; }
+
+  /* --- Toast --- */
+  .toast {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    text-align: center;
+    font-size: 13px;
+    padding: 12px 16px;
+  }
+
+  /* --- Inputs: evita zoom no iOS (font-size < 16px) --- */
+  input[type="text"],
+  input[type="email"],
+  input[type="url"],
+  input[type="number"],
+  input[type="date"],
+  input[type="search"],
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  /* Alvos de toque confortáveis */
+  .btn { min-height: 40px; }
+  .btn-sm { min-height: 34px; }
+}
+
+/* ---------- 19.3 Mobile pequeno (≤ 480px) ---------- */
+@media (max-width: 480px) {
+  .main { padding: 12px; }
+
+  .sidebar-header { padding: 12px 14px; }
+  .sidebar-header .logo { width: 34px; height: 34px; }
+  .sidebar-header h1 { font-size: 13px; }
+  .tagline { font-size: 9px; }
+
+  .nav { padding: 6px; }
+  .nav-item {
+    font-size: 11px;
+    padding: 7px 10px;
+  }
+  .nav-item .nav-icon { font-size: 13px; width: 16px; }
+
+  .view-header h2 { font-size: 18px; }
+  .subtitle { font-size: 12px; }
+
+  .metrics-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .metric-card { padding: 14px 10px; }
+  .metric-value { font-size: 22px; }
+  .metric-label { font-size: 10px; letter-spacing: 0.3px; }
+
+  .dash-card { padding: 14px; }
+  .dash-card h3 { font-size: 11px; }
+  .funnel-label { width: 90px; font-size: 11px; }
+  .funnel-bar-bg { height: 18px; }
+  .funnel-count { width: 28px; font-size: 12px; }
+
+  .form-card { padding: 14px; }
+  .form-group label { font-size: 12px; }
+
+  .btn { padding: 9px 14px; font-size: 13px; }
+  .btn-sm { padding: 6px 10px; font-size: 12px; }
+
+  .header-actions { grid-template-columns: 1fr; }
+
+  .leads-table td { font-size: 12.5px; }
+  .leads-table td::before { font-size: 10px; }
+
+  .pagination-controls { flex-wrap: wrap; }
+  .page-num { width: 100%; text-align: center; order: -1; }
+
+  .toast { font-size: 12.5px; padding: 10px 14px; }
 }
 
 /* ---------- 20. SCROLLBAR ---------- */
