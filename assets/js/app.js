@@ -1,19 +1,82 @@
 /**
  * Lead Extractor v2 — Sheets-only, Google Login, temperatura, nichos, follow-up
+ * v2.1 — Templates expandidos + status proposta/negociacao + variável cidade
  */
 (function () {
   'use strict';
 
   const SETTINGS_KEY = 'gmaps_settings_v2';
-  const TEMPLATES_KEY = 'gmaps_templates_v1';
+  const TEMPLATES_KEY = 'gmaps_templates_v2'; // ⬅️ bump de versão força recarga dos novos templates
   const SESSION_KEY = 'gmaps_session_v1';
 
   const DEFAULT_TEMPLATES = [
-    { id: 'tpl_abordagem', name: 'Abordagem inicial', key: 'abordagem', body: 'Olá! Tudo bem?\n\nVi o {{nome}} no Google Maps ({{categoria}}) e gostaria de apresentar uma solução para o seu negócio. Tem 2 minutinhos?' },
-    { id: 'tpl_follow1', name: 'Follow 1', key: 'follow1', body: 'Oi {{nome}}! Reforçando o contato.\n\nAinda faz sentido conversarmos?\n\nFico à disposição!' },
-    { id: 'tpl_follow2', name: 'Follow 2 (último)', key: 'follow2', body: 'Olá {{nome}}, última mensagem por enquanto.\n\nSe no futuro fizer sentido, é só responder.\n\nSucesso com o {{nome}}!' },
-    { id: 'tpl_reagendar', name: 'Reagendar', key: 'custom', body: 'Olá {{nome}}! Retomando nosso contato. Ainda tem interesse?' }
+    // ============ ABERTURA ============
+    { id: 'tpl_abertura_padrao', name: 'Abertura — padrão', key: 'abordagem',
+      body: 'Olá, tudo bem? 👋\n\nMeu nome é Natal, sou desenvolvedor de sistemas e trabalho com criação de sites e soluções digitais para empresas.\n\nEncontrei a {{nome}} e gostei do trabalho de vocês. Estou entrando em contato porque estou oferecendo meus serviços para escritórios de arquitetura que querem ter uma presença profissional na internet e apresentar melhor seus projetos e serviços aos clientes.\n\nPosso te mostrar rapidamente algumas ideias de como isso poderia ser feito para o escritório de vocês, sem compromisso?\n\nSe tiver interesse, posso te enviar alguns exemplos. 🙂' },
+
+    { id: 'tpl_abertura_sem_site', name: 'Abertura — sem site', key: 'abordagem',
+      body: 'Olá, tudo bem? 👋\n\nEncontrei o contato da {{nome}} no Google e notei que vocês ainda não têm um site próprio.\n\nSou desenvolvedor e ajudo empresas a criar um site com portfólio, serviços e botão direto pro WhatsApp — pra valorizar o trabalho de vocês e facilitar o contato de novos clientes.\n\nPosso te mandar alguns exemplos rápidos? Sem compromisso. 🙂' },
+
+    // ============ FOLLOW-UPS ============
+    { id: 'tpl_follow1', name: 'Follow 1', key: 'follow1',
+      body: 'Olá, tudo bem? 😊\n\nPassando só para retomar minha mensagem anterior. Estou entrando em contato com alguns escritórios de arquitetura e engenharia de {{cidade}} para oferecer criação de sites e soluções digitais.\n\nAcredito que um site bem estruturado pode ajudar a valorizar os projetos do escritório e facilitar o contato com novos clientes.\n\nSe fizer sentido para vocês, posso apresentar algumas ideias sem compromisso. 👍' },
+
+    { id: 'tpl_follow2', name: 'Follow 2 (encerramento educado)', key: 'follow2',
+      body: 'Olá! Tudo bem? 😊\n\nFaço só mais uma tentativa para não ficar te incomodando.\n\nAcredito que um site poderia ser uma forma interessante de apresentar a {{nome}} de uma maneira mais profissional na internet.\n\nSe em algum momento fizer sentido para vocês, fico à disposição para mostrar algumas ideias. Se não for uma prioridade agora, sem problema algum. 👍\n\nUm abraço! 👋' },
+
+    // ============ OBJEÇÕES ============
+    { id: 'tpl_obj_ja_tem_site', name: 'Objeção — já temos site', key: 'objecao',
+      body: 'Ah, perfeito! 😊 Nesse caso, melhor ainda.\n\nMeu trabalho também pode ser voltado para melhorias, reformulação ou manutenção de sites já existentes, caso futuramente vocês precisem.\n\nDe qualquer forma, agradeço pelo retorno e desejo muito sucesso para vocês e para a {{nome}}! 🙏🏼' },
+
+    { id: 'tpl_obj_instagram', name: 'Objeção — usamos Instagram', key: 'objecao',
+      body: 'Entendo perfeitamente! 😊 As redes sociais realmente são muito importantes para divulgação.\n\nO site acaba funcionando mais como uma apresentação institucional do escritório, mas cada negócio tem seu momento e sua estratégia.\n\nObrigado pelo retorno e desejo muito sucesso para vocês! Caso futuramente queiram complementar a presença digital, fico à disposição. 👍' },
+
+    { id: 'tpl_obj_nao_e_o_momento', name: 'Objeção — agora não é o momento', key: 'objecao',
+      body: 'Claro, sem problema! 😊\n\nEntendo perfeitamente. Cada empresa tem seu momento e suas prioridades.\n\nVou deixar meu contato à disposição e, quando fizer sentido investir nessa área, podemos conversar com calma.\n\nDesejo muito sucesso para vocês e para a {{nome}}! 🙏🏼' },
+
+    { id: 'tpl_obj_esta_caro', name: 'Objeção — está muito caro', key: 'objecao',
+      body: 'Entendo! 😊\n\nMinha ideia é justamente oferecer uma solução mais acessível para escritórios menores, sem abrir mão de um site profissional e personalizado.\n\nO projeto inclui o desenvolvimento completo e, dependendo da proposta, também posso incluir domínio e hospedagem pelo primeiro ano.\n\nSe quiser, posso verificar uma condição que fique mais confortável para vocês.' },
+
+    { id: 'tpl_obj_sem_verba', name: 'Objeção — não posso investir agora', key: 'objecao',
+      body: 'Entendo perfeitamente, principalmente dependendo do momento do escritório. 😊\n\nPara facilitar, consigo trabalhar com pagamento parcelado e dividir o investimento em etapas durante o desenvolvimento.\n\nSe houver interesse em fazer o projeto, posso verificar uma condição que fique mais tranquila para vocês.' },
+
+    { id: 'tpl_obj_vou_pensar', name: 'Objeção — vou pensar / verificar', key: 'objecao',
+      body: 'Claro! 😊\n\nFique à vontade para avaliar com calma.\n\nSe surgir qualquer dúvida sobre o projeto, o que está incluído ou sobre as condições de pagamento, pode me chamar que fico à disposição. 👍\n\nObrigado pelo retorno!' },
+
+    { id: 'tpl_obj_gostei_mas', name: 'Objeção — gostei, mas…', key: 'objecao',
+      body: 'Que bom que gostou! 😊\n\nMe conta só uma coisa: o que você acha que seria o principal ponto para conseguirmos avançar? É mais uma questão de investimento, momento ou algum detalhe do projeto?\n\nAssim consigo entender melhor e ver se existe alguma forma de adaptar a proposta para vocês.' },
+
+    // ============ PROPOSTA / EXEMPLOS ============
+    { id: 'tpl_proposta', name: 'Proposta — quanto custa', key: 'proposta',
+      body: 'Que bom que gostou! 😊\n\nSegue o que está incluído no projeto:\n\n🌐 Site institucional personalizado\n📱 Layout responsivo (celular, tablet e desktop)\n🖼️ Portfólio de projetos\n📝 Área de serviços\n💬 Botão direto para WhatsApp\n🔍 Estrutura otimizada para o Google\n\n💰 Investimento:\n• Site institucional personalizado: R$ 999\n• Domínio + hospedagem por 1 ano incluídos\n\n🎁 Condição promocional: De R$ 999 por R$ 745, incluindo domínio e hospedagem por 1 ano.\n\nFaz sentido para vocês? Posso seguir com a proposta?' },
+
+    { id: 'tpl_exemplos', name: 'Exemplos — manda exemplos', key: 'exemplos',
+      body: 'Perfeito! 😊\n\nVou te enviar alguns exemplos de trabalhos que desenvolvi, com estilos e estruturas diferentes, para você ter uma ideia do que é possível fazer.\n\n👉 [link do portfólio]\n\nDá uma olhada com calma e me diz o que você acha. Se você gostar de algum estilo, posso pensar em uma estrutura específica para o escritório de vocês. 👍' },
+
+    // ============ ENCERRAMENTOS ============
+    { id: 'tpl_enc_nao_interesse', name: 'Encerrar — não tenho interesse', key: 'encerramento',
+      body: 'Sem problema algum! 😊\n\nEu que agradeço pela atenção e pelo retorno. Desejo muito sucesso para vocês e para a {{nome}}!\n\nCaso futuramente surja alguma necessidade nessa área, fico à disposição para ajudar.\n\nUm abraço! 👋' },
+
+    { id: 'tpl_enc_nao_preciso', name: 'Encerrar — não preciso de site', key: 'encerramento',
+      body: 'Entendo! 😊\n\nCada escritório tem uma estratégia diferente e, se hoje vocês estão conseguindo atender bem às necessidades através de outros canais, faz sentido.\n\nObrigado pela atenção e pelo retorno. Desejo muito sucesso para vocês e para a {{nome}}!\n\nCaso futuramente precisem de alguma solução digital, fico à disposição. 👍' },
+
+    { id: 'tpl_enc_ja_tenho_fornecedor', name: 'Encerrar — já tenho fornecedor', key: 'encerramento',
+      body: 'Ah, perfeito! 😊\n\nNesse caso, fico feliz que vocês já tenham alguém cuidando dessa parte.\n\nObrigado pela atenção e desejo muito sucesso para vocês e para a {{nome}}!\n\nSe algum dia precisarem de uma alternativa ou de algum serviço complementar, fico à disposição. 👍' }
   ];
+
+  // Mapa status → template preferido (para abrir o modal já no template certo)
+  const STATUS_TEMPLATE_MAP = {
+    novo:        'tpl_abertura_padrao',
+    abordagem:   'tpl_follow1',
+    follow1:     'tpl_follow2',
+    follow2:     'tpl_follow2',
+    backlog:     'tpl_follow1',
+    interessado: 'tpl_exemplos',
+    proposta:    'tpl_proposta',
+    negociacao:  'tpl_obj_gostei_mas',
+    convertido:  'tpl_abertura_padrao',
+    descartado:  'tpl_enc_nao_interesse'
+  };
 
   let leads = [];
   let templates = [];
@@ -106,7 +169,6 @@
   /**
    * Temperatura 0–5 para oferta de sites / landing pages:
    * +1 telefone · +1 WhatsApp · +2 sem site (ou site fraco/rede social)
-   * +1 site fraco (se ainda tiver algum link) já coberto no +2 de ausência/fraco
    * +1 reputação (nota ≥ 4 e ≥ 20 avaliações) · +1 nicho digital-dependente
    */
   function calcTemperature(lead) {
@@ -117,7 +179,7 @@
 
     var site = (lead.website || '').trim();
     if (!site || site.length < 10 || isWeakWebsite(site)) {
-      score += 2; // maior oportunidade: não tem presença web real
+      score += 2;
     }
 
     var rating = parseFloat(String(lead.rating || '').replace(',', '.'));
@@ -149,12 +211,26 @@
     return text ? base + '?text=' + encodeURIComponent(text) : base;
   }
 
+  function extractCity(address) {
+    if (!address) return '';
+    // Tenta pegar a penúltima parte de um endereço separado por vírgula (ex.: "Rua X, 123, Campo Grande - MS")
+    var parts = String(address).split(',').map(function (p) { return p.trim(); }).filter(Boolean);
+    if (parts.length >= 2) {
+      var candidate = parts[parts.length - 2];
+      // Remove o "- UF" se estiver colado na última parte
+      if (/ - [A-Z]{2}$/.test(candidate)) return candidate.replace(/ - [A-Z]{2}$/, '').trim();
+      return candidate;
+    }
+    return '';
+  }
+
   function applyTemplate(body, lead) {
     return (body || '')
       .replace(/\{\{nome\}\}/gi, lead.name || '')
       .replace(/\{\{categoria\}\}/gi, lead.category || '')
       .replace(/\{\{endereco\}\}/gi, lead.address || '')
-      .replace(/\{\{telefone\}\}/gi, lead.phone || '');
+      .replace(/\{\{telefone\}\}/gi, lead.phone || '')
+      .replace(/\{\{cidade\}\}/gi, extractCity(lead.address || ''));
   }
 
   function formatDate(iso) {
@@ -464,7 +540,7 @@
   }
 
   function getFollowUpLeads(days) {
-    var funnel = { novo: 1, abordagem: 1, follow1: 1, follow2: 1, contatado: 1 };
+    var funnel = { novo: 1, abordagem: 1, follow1: 1, follow2: 1, interessado: 1, proposta: 1, negociacao: 1 };
     return leads.filter(function (l) {
       var st = l.status || 'novo';
       if (!funnel[st]) return false;
@@ -491,12 +567,13 @@
       '<div class="metric-card danger"><div class="metric-value">' + hot + '</div><div class="metric-label">Quentes (4–5)</div></div>' +
       '<div class="metric-card warning"><div class="metric-value">' + followUps.length + '</div><div class="metric-label">Follow-up pendente</div></div>' +
       '<div class="metric-card"><div class="metric-value">' + countByStatus('backlog') + '</div><div class="metric-label">Backlog</div></div>' +
-      '<div class="metric-card success"><div class="metric-value">' + (countByStatus('interessado') + countByStatus('convertido')) + '</div><div class="metric-label">Interess. + Conv.</div></div>';
+      '<div class="metric-card success"><div class="metric-value">' + (countByStatus('interessado') + countByStatus('proposta') + countByStatus('negociacao') + countByStatus('convertido')) + '</div><div class="metric-label">Interess. + Proposta + Negoc. + Conv.</div></div>';
 
     var stages = [
       { key: 'novo', label: 'Novo' }, { key: 'abordagem', label: 'Abordagem' },
       { key: 'follow1', label: 'Follow 1' }, { key: 'follow2', label: 'Follow 2' },
       { key: 'backlog', label: 'Backlog' }, { key: 'interessado', label: 'Interessado' },
+      { key: 'proposta', label: 'Proposta' }, { key: 'negociacao', label: 'Negociação' },
       { key: 'convertido', label: 'Convertido' }
     ];
     var maxF = Math.max(1, ...stages.map(function (s) { return countByStatus(s.key); }));
@@ -891,7 +968,6 @@
       return lead;
     }).filter(function (l) { return l.name; });
 
-    // Remove duplicates within import batch and against existing leads
     var seen = {};
     var unique = [];
     var skippedLocal = 0;
@@ -929,9 +1005,8 @@
     sel.innerHTML = templates.map(function (t) {
       return '<option value="' + t.id + '">' + escapeHtml(t.name) + '</option>';
     }).join('');
-    var stageMap = { novo: 'abordagem', abordagem: 'follow1', follow1: 'follow2', backlog: 'custom' };
-    var prefer = stageMap[lead.status || 'novo'] || 'abordagem';
-    var preferred = templates.find(function (t) { return t.key === prefer; });
+    var preferredId = STATUS_TEMPLATE_MAP[lead.status || 'novo'];
+    var preferred = templates.find(function (t) { return t.id === preferredId; });
     if (preferred) sel.value = preferred.id;
     function refresh() {
       var tpl = templates.find(function (t) { return t.id === sel.value; });
@@ -953,12 +1028,24 @@
     if (!lead) return;
     var key = waContext.templateKey;
     lead.lastContactAt = new Date().toISOString();
-    if (key === 'abordagem') lead.status = 'abordagem';
-    else if (key === 'follow1') lead.status = 'follow1';
-    else if (key === 'follow2') {
+
+    if (key === 'abordagem') {
+      lead.status = 'abordagem';
+    } else if (key === 'follow1') {
+      lead.status = 'follow1';
+    } else if (key === 'follow2') {
       lead.status = 'backlog';
       lead.nextContactAt = addMonths(new Date(), parseInt(settings.backlogMonths, 10) || 180).toISOString();
-    } else if (lead.status === 'novo') lead.status = 'contatado';
+    } else if (key === 'objecao' || key === 'proposta') {
+      lead.status = 'negociacao';
+    } else if (key === 'exemplos') {
+      lead.status = 'interessado';
+    } else if (key === 'encerramento') {
+      lead.status = 'descartado';
+    } else if (lead.status === 'novo') {
+      lead.status = 'contatado';
+    }
+
     await updateLeadRemote(lead);
     closeWaModal();
     renderTable();
@@ -1102,9 +1189,11 @@
 
     document.getElementById('btnBulkStatus').addEventListener('click', async function () {
       if (!selectedIds.size) return;
-      var status = prompt('Novo status:', 'contatado');
+      var status = prompt('Novo status (novo, abordagem, follow1, follow2, backlog, interessado, proposta, negociacao, convertido, descartado):', 'negociacao');
       if (!status) return;
-      var s = status.toLowerCase();
+      var s = status.toLowerCase().trim();
+      var validos = ['novo','abordagem','follow1','follow2','backlog','interessado','proposta','negociacao','convertido','descartado'];
+      if (validos.indexOf(s) === -1) { toast('Status inválido', 'error'); return; }
       setLoading(true);
       try {
         for (var i = 0; i < leads.length; i++) {

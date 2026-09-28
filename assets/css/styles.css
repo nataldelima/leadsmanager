@@ -481,6 +481,8 @@ select {
 .status-backlog    { background: #e5e7eb; color: #4b5563; }
 .status-contatado  { background: #fef3c7; color: #a16207; }
 .status-interessado{ background: #d1fae5; color: #065f46; }
+.status-proposta    { background: #dbeafe; color: #1e40af; }
+.status-negociacao  { background: #fed7aa; color: #9a3412; }
 .status-convertido { background: #a7f3d0; color: #065f46; }
 .status-descartado { background: #fee2e2; color: #991b1b; }
 

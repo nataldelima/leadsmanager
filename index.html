@@ -151,8 +151,9 @@
               <option value="follow1">Follow 1</option>
               <option value="follow2">Follow 2</option>
               <option value="backlog">Backlog</option>
-              <option value="contatado">Contatado</option>
               <option value="interessado">Interessado</option>
+              <option value="proposta">Proposta enviada</option>
+              <option value="negociacao">Em negociação</option>
               <option value="convertido">Convertido</option>
               <option value="descartado">Descartado</option>
             </select>
@@ -236,8 +237,9 @@
                   <option value="follow1">Follow 1</option>
                   <option value="follow2">Follow 2</option>
                   <option value="backlog">Backlog</option>
-                  <option value="contatado">Contatado</option>
                   <option value="interessado">Interessado</option>
+                  <option value="proposta">Proposta enviada</option>
+                  <option value="negociacao">Em negociação</option>
                   <option value="convertido">Convertido</option>
                   <option value="descartado">Descartado</option>
                 </select>
@@ -257,7 +259,7 @@
         <header class="view-header">
           <div>
             <h2>Templates</h2>
-            <p class="subtitle">{{nome}} {{categoria}} {{endereco}} {{telefone}}</p>
+            <p class="subtitle">Variáveis: {{nome}} {{categoria}} {{endereco}} {{telefone}} {{cidade}}</p>
           </div>
           <button id="btnNewTemplate" class="btn btn-primary">+ Novo</button>
         </header>
@@ -375,13 +377,17 @@
         <header class="view-header">
           <div>
             <h2>Ajuda</h2>
-            <p class="subtitle">Login, planilha e temperatura</p>
+            <p class="subtitle">Login, planilha, temperatura e funil</p>
           </div>
         </header>
         <div class="help-cards">
           <div class="help-card">
             <h3>Temperatura 0–5 (sites / landing)</h3>
             <p>+1 telefone · +1 WhatsApp · <strong>+2 sem site ou site fraco</strong> (Instagram, Linktree, etc.) · +1 nota ≥ 4,0 e ≥ 20 avaliações · +1 nicho digital-dependente (máx. 5).</p>
+          </div>
+          <div class="help-card">
+            <h3>Funil de contato</h3>
+            <p><strong>novo</strong> → <strong>abordagem</strong> → <strong>follow1</strong> → <strong>follow2</strong> → <strong>backlog</strong> · Se o lead responder, siga para <strong>interessado</strong> → <strong>proposta</strong> → <strong>negociacao</strong> → <strong>convertido</strong>. Sem interesse: <strong>descartado</strong>.</p>
           </div>
           <div class="help-card">
             <h3>Sem localStorage de leads</h3>
@@ -421,8 +427,9 @@
               <option value="follow1">Follow 1</option>
               <option value="follow2">Follow 2</option>
               <option value="backlog">Backlog</option>
-              <option value="contatado">Contatado</option>
               <option value="interessado">Interessado</option>
+              <option value="proposta">Proposta enviada</option>
+              <option value="negociacao">Em negociação</option>
               <option value="convertido">Convertido</option>
               <option value="descartado">Descartado</option>
             </select>
@@ -444,7 +451,7 @@
       <header class="modal-header"><h3>Enviar WhatsApp</h3><button class="modal-close" id="waModalClose">&times;</button></header>
       <div class="form-group"><label>Lead</label><p id="waLeadName" class="wa-lead-name"></p></div>
       <div class="form-group"><label for="waTemplateSelect">Template</label><select id="waTemplateSelect"></select></div>
-      <div class="form-group"><label for="waMessagePreview">Mensagem</label><textarea id="waMessagePreview" rows="8"></textarea></div>
+      <div class="form-group"><label for="waMessagePreview">Mensagem</label><textarea id="waMessagePreview" rows="10"></textarea></div>
       <div class="form-actions">
         <button type="button" id="btnOpenWhatsApp" class="btn btn-primary">📱 Abrir WhatsApp</button>
         <button type="button" id="btnMarkSent" class="btn btn-outline">Marcar como enviado</button>
@@ -466,6 +473,10 @@
             <option value="abordagem">Abordagem</option>
             <option value="follow1">Follow 1</option>
             <option value="follow2">Follow 2</option>
+            <option value="objecao">Objeção</option>
+            <option value="proposta">Proposta</option>
+            <option value="exemplos">Exemplos</option>
+            <option value="encerramento">Encerramento</option>
             <option value="custom">Outro</option>
           </select>
         </div>
@@ -481,6 +492,5 @@
   <div id="toast" class="toast hidden"></div>
   <script src="assets/js/app.js"></script>
   <script src="assets/js/pwa.js"></script>
-</body>
 </body>
 </html>
