@@ -208,6 +208,20 @@ async function incrementDailyCounter() {
 }
 
 /* =========================================================
+SETTINGS (configurações do usuário)
+========================================================= */
+async function getSettings() {
+    const ref = doc(db, 'users', requireUser(), 'settings', 'app');
+    const snap = await getDoc(ref);
+    return snap.exists() ? snap.data() : null;
+}
+
+async function saveSettings(data) {
+    const ref = doc(db, 'users', requireUser(), 'settings', 'app');
+    await setDoc(ref, { ...data, updatedAt: serverTimestamp() }, { merge: true });
+}
+
+/* =========================================================
    EXPOSTO GLOBALMENTE
    ========================================================= */
 window.fb = {
@@ -217,7 +231,8 @@ window.fb = {
     listLeads, addLead, bulkAddLeads, updateLead, deleteLeads,
     listTemplates, addTemplate, updateTemplate, deleteTemplate,
     listStatuses, addStatus, updateStatus, deleteStatus,
-    ensureSeed, getTodayCounter, incrementDailyCounter
+    ensureSeed, getTodayCounter, incrementDailyCounter,
+    getSettings, saveSettings
 };
 
 console.log('[Firebase] Serviço carregado:', firebaseConfig.projectId);

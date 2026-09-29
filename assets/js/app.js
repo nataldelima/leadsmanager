@@ -298,11 +298,58 @@
   /* =========================================================
      CONFIGURAÇÕES LOCAIS (não vão pro banco)
      ========================================================= */
-  function loadSettings() {
+  /* Cache local (rápido, funciona offline) */
+  function loadSettingsFromCache() {
     try {
       var raw = localStorage.getItem(SETTINGS_KEY);
       if (raw) settings = Object.assign({}, settings, JSON.parse(raw));
     } catch (e) { /* */ }
+  }
+
+  function cacheSettings() {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { }
+  }
+
+  /* Nuvem (fonte de verdade) */
+  async function loadSettingsFromCloud() {
+    try {
+      var remote = await window.fb.getSettings();
+      if (remote) {
+        var copy = Object.assign({}, remote);
+        delete copy.updatedAt;
+        settings = Object.assign({}, settings, copy);
+      } else {
+        // Primeiro login: sobe os defaults como doc inicial
+        await window.fb.saveSettings(settings);
+      }
+      cacheSettings();
+    } catch (e) {
+      console.warn('Settings cloud indisponível, usando cache local:', e);
+    }
+  }
+
+  async function saveSettings() {
+    cacheSettings(); // imediato para resposta rápida
+    try {
+      await window.fb.saveSettings(settings);
+    } catch (e) {
+      toast('Falha ao salvar na nuvem: ' + e.message, 'error');
+    }
+  }
+
+  /* Aplica os valores atuais nos campos do formulário de Configurações */
+  function applySettingsToForm() {
+    var setVal = function (id, v) { var el = document.getElementById(id); if (el) el.value = v; };
+    var setChk = function (id, v) { var el = document.getElementById(id); if (el) el.checked = v; };
+
+    setVal('followUpDays', settings.followUpDays || 3);
+    setVal('backlogMonths', settings.backlogMonths || 180);
+    setVal('defaultCountry', settings.defaultCountry || '55');
+    setVal('dailySafeLimit', settings.dailySafeLimit || 20);
+    setVal('dailyWarnLimit', settings.dailyWarnLimit || 30);
+    setChk('defaultHasWhatsApp', settings.defaultHasWhatsApp);
+    setChk('confirmDelete', settings.confirmDelete);
+    setChk('fHasWhatsApp', settings.defaultHasWhatsApp);
   }
 
   function saveSettings() {
@@ -373,6 +420,10 @@
         av.classList.add('hidden');
       }
     }
+
+    await loadSettingsFromCloud();
+    applySettingsToForm();
+
     await loadAll();
 
     var overdue = getOverdueLeads().length;
@@ -1358,7 +1409,7 @@
     });
 
     // Configurações
-    document.getElementById('btnSaveSettings').addEventListener('click', () => {
+    document.getElementById('btnSaveSettings').addEventListener('click', async () => {
       settings.followUpDays = parseInt(document.getElementById('followUpDays').value, 10) || 3;
       settings.backlogMonths = parseInt(document.getElementById('backlogMonths').value, 10) || 180;
       settings.defaultCountry = document.getElementById('defaultCountry').value.trim() || '55';
@@ -1366,9 +1417,11 @@
       settings.confirmDelete = document.getElementById('confirmDelete').checked;
       settings.dailySafeLimit = parseInt(document.getElementById('dailySafeLimit').value, 10) || 20;
       settings.dailyWarnLimit = parseInt(document.getElementById('dailyWarnLimit').value, 10) || 30;
-      saveSettings();
+
+      await saveSettings();          // ⬅️ agora é async
       toast('Configurações salvas');
       renderDashboard();
+      updateWppCounter();            // reflete os novos limites no badge
     });
 
     // Modal edição
@@ -1543,22 +1596,10 @@
      INIT
      ========================================================= */
   function init() {
-    loadSettings();
+    loadSettingsFromCache();;
     loadSession();
     bindEvents();
-
-    // Preenche formulário de settings (só os campos que ainda existem)
-    var setVal = (id, v) => { var el = document.getElementById(id); if (el) el.value = v; };
-    var setChk = (id, v) => { var el = document.getElementById(id); if (el) el.checked = v; };
-
-    setVal('followUpDays', settings.followUpDays || 3);
-    setVal('backlogMonths', settings.backlogMonths || 180);
-    setVal('defaultCountry', settings.defaultCountry || '55');
-    setChk('defaultHasWhatsApp', settings.defaultHasWhatsApp);
-    setChk('confirmDelete', settings.confirmDelete);
-    setChk('fHasWhatsApp', settings.defaultHasWhatsApp);
-    setVal('dailySafeLimit', settings.dailySafeLimit || 20);
-    setVal('dailyWarnLimit', settings.dailyWarnLimit || 30);
+    applySettingsToForm();
 
     // Espera o módulo do Firebase carregar
     var tries = 0;
