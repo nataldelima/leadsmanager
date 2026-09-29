@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lead Extractor — Google Maps</title>
+  <title>Leads Manager — Google Maps</title>
 
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
@@ -34,33 +35,31 @@
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'">
+  <link rel="preload" as="style"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    media="print" onload="this.media='all'">
   <noscript>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
   </noscript>
-
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
+
 <body>
   <div id="loginScreen" class="login-screen">
     <div class="login-card">
       <div class="login-logo">
-        <img src="assets/img/logo.svg" alt="Lead Manager" />
+        <img src="assets/img/logo.svg" alt="Leads Manager" />
       </div>
-      <h1>Lead Extractor</h1>
-      <p class="login-sub">Entre com sua conta Google para acessar o sistema e a planilha.</p>
+      <h1>Leads Manager</h1>
+      <p class="login-sub">Entre com sua conta Google para acessar seus leads.</p>
 
-      <div id="googleBtnWrapper" class="google-btn-wrapper">
-        <div id="g_id_signin_host"></div>
-      </div>
+      <button id="btnGoogleLogin" class="btn btn-primary"
+        style="width:100%;justify-content:center;font-size:14px;padding:12px 18px">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt=""
+          style="width:18px;height:18px;margin-right:8px">
+        Entrar com Google
+      </button>
       <p id="loginError" class="login-error hidden"></p>
-      <div class="login-config-hint">
-        <p><strong>Client ID</strong> OAuth (Google Cloud Console):</p>
-        <input type="text" id="loginClientId" placeholder="xxxxx.apps.googleusercontent.com">
-        <button type="button" id="btnApplyClientId" class="btn btn-primary" style="margin-top:10px;width:100%">Aplicar Client ID</button>
-        <p class="hint" style="margin-top:10px">Use http://localhost (servidor local), não abra o arquivo por file://. Cadastre a origem no Client ID.</p>
-      </div>
     </div>
   </div>
 
@@ -68,21 +67,30 @@
     <aside class="sidebar">
       <div class="sidebar-header">
         <div class="logo">
-          <img src="assets/img/logo.svg" alt="Lead Manager" />
+          <img src="assets/img/logo.svg" alt="Leads Manager" />
         </div>
         <div>
-          <h1>Lead Extractor</h1>
-          <p class="tagline">Google Maps → Sheets</p>
+          <h1>Lead Manager</h1>
+          <p class="tagline">Google Maps → Firestore</p>
         </div>
       </div>
       <nav class="nav">
-        <button class="nav-item active" data-view="dashboard"><span class="nav-icon">📊</span><span>Dashboard</span></button>
-        <button class="nav-item" data-view="leads"><span class="nav-icon">📋</span><span>Leads</span><span class="badge" id="navLeadCount">0</span></button>
+        <button class="nav-item active" data-view="dashboard"><span
+            class="nav-icon">📊</span><span>Dashboard</span></button>
+        <button class="nav-item" data-view="leads">
+          <span class="nav-icon">📋</span>
+          <span>Leads</span>
+          <span class="badge" id="navLeadCount">0</span>
+          <span class="badge badge-danger hidden" id="navOverdueCount">0</span>
+        </button>
         <button class="nav-item" data-view="add"><span class="nav-icon">➕</span><span>Adicionar</span></button>
         <button class="nav-item" data-view="templates"><span class="nav-icon">💬</span><span>Templates</span></button>
+        <button class="nav-item" data-view="statuses"><span class="nav-icon">🏷️</span><span>Status</span></button>
         <button class="nav-item" data-view="import"><span class="nav-icon">📥</span><span>Importar</span></button>
-        <button class="nav-item" data-view="export"><span class="nav-icon">📤</span><span>Exportar / Sheets</span></button>
-        <button class="nav-item" data-view="settings"><span class="nav-icon">⚙️</span><span>Configurações</span></button>
+        <button class="nav-item" data-view="export"><span class="nav-icon">📤</span><span>Exportar /
+            Sheets</span></button>
+        <button class="nav-item" data-view="settings"><span
+            class="nav-icon">⚙️</span><span>Configurações</span></button>
         <button class="nav-item" data-view="help"><span class="nav-icon">❓</span><span>Ajuda</span></button>
       </nav>
       <div class="sidebar-footer">
@@ -94,14 +102,14 @@
           </div>
         </div>
         <button id="btnLogout" class="btn btn-sm btn-outline" style="width:100%;margin-top:8px">Sair</button>
-        <div class="storage-info" style="margin-top:8px"><span id="storageInfo">Dados na planilha Google</span></div>
+        <div class="storage-info" style="margin-top:8px"><span id="storageInfo">Dados no Firestore</span></div>
       </div>
     </aside>
 
     <main class="main">
       <div id="loadingOverlay" class="loading-overlay hidden">
         <div class="spinner"></div>
-        <p>Carregando da planilha...</p>
+        <p>Carregando do Firestore...</p>
       </div>
 
       <section id="view-dashboard" class="view active">
@@ -110,7 +118,13 @@
             <h2>Dashboard</h2>
             <p class="subtitle">Métricas, temperatura e follow-ups</p>
           </div>
-          <button id="btnRefreshData" class="btn btn-outline">🔄 Atualizar da planilha</button>
+          <div class="header-actions">
+            <div class="wpp-counter" id="wppCounter" title="Mensagens enviadas hoje">
+              <span class="wpp-icon">📤</span>
+              <span><strong id="wppCount">0</strong>/<span id="wppLimit">20</span> hoje</span>
+            </div>
+            <button id="btnRefreshData" class="btn btn-outline">🔄 Atualizar</button>
+          </div>
         </header>
         <div class="metrics-grid" id="metricsGrid"></div>
         <div class="dashboard-row">
@@ -139,23 +153,15 @@
         <header class="view-header">
           <div>
             <h2>Leads</h2>
-            <p class="subtitle">Fonte: planilha Google (sem localStorage)</p>
+            <p class="subtitle">Fonte: Firestore</p>
           </div>
           <div class="header-actions">
             <div class="search-box"><input type="search" id="searchInput" placeholder="Buscar..."></div>
-            <select id="nicheFilter"><option value="all">Todos os nichos</option></select>
+            <select id="nicheFilter">
+              <option value="all">Todos os nichos</option>
+            </select>
             <select id="statusFilter">
               <option value="all">Todos os status</option>
-              <option value="novo">Novo</option>
-              <option value="abordagem">Abordagem</option>
-              <option value="follow1">Follow 1</option>
-              <option value="follow2">Follow 2</option>
-              <option value="backlog">Backlog</option>
-              <option value="interessado">Interessado</option>
-              <option value="proposta">Proposta enviada</option>
-              <option value="negociacao">Em negociação</option>
-              <option value="convertido">Convertido</option>
-              <option value="descartado">Descartado</option>
             </select>
             <select id="tempFilter">
               <option value="all">Temperatura</option>
@@ -202,8 +208,8 @@
           <div id="pagination" class="pagination"></div>
           <div id="emptyState" class="empty-state">
             <div class="empty-icon">📭</div>
-            <h3>Nenhum lead na planilha</h3>
-            <p>Adicione, importe ou confira a URL do Web App.</p>
+            <h3>Nenhum lead cadastrado</h3>
+            <p>Adicione um lead ou importe um arquivo.</p>
             <button class="btn btn-primary" data-goto="add">Adicionar lead</button>
           </div>
         </div>
@@ -213,38 +219,31 @@
         <header class="view-header">
           <div>
             <h2>Adicionar lead</h2>
-            <p class="subtitle">Salvo direto na planilha</p>
+            <p class="subtitle">Salvo direto no Firestore</p>
           </div>
         </header>
         <div class="form-card">
           <form id="leadForm">
             <div class="form-grid">
               <div class="form-group"><label for="fName">Nome *</label><input type="text" id="fName" required></div>
-              <div class="form-group"><label for="fCategory">Nicho / Categoria</label><input type="text" id="fCategory" placeholder="Ex: Restaurante"></div>
+              <div class="form-group"><label for="fCategory">Nicho / Categoria</label><input type="text" id="fCategory"
+                  placeholder="Ex: Restaurante"></div>
               <div class="form-group full"><label for="fAddress">Endereço</label><input type="text" id="fAddress"></div>
               <div class="form-group"><label for="fPhone">Telefone</label><input type="text" id="fPhone"></div>
-              <div class="form-group"><label class="checkbox-label"><input type="checkbox" id="fHasWhatsApp" checked> Tem WhatsApp</label></div>
+              <div class="form-group"><label class="checkbox-label"><input type="checkbox" id="fHasWhatsApp" checked>
+                  Tem WhatsApp</label></div>
               <div class="form-group"><label for="fEmail">E-mail</label><input type="email" id="fEmail"></div>
               <div class="form-group"><label for="fWebsite">Website</label><input type="url" id="fWebsite"></div>
-              <div class="form-group"><label for="fRating">Nota</label><input type="text" id="fRating" placeholder="4.5"></div>
+              <div class="form-group"><label for="fRating">Nota</label><input type="text" id="fRating"
+                  placeholder="4.5"></div>
               <div class="form-group"><label for="fReviews">Nº Avaliações</label><input type="text" id="fReviews"></div>
               <div class="form-group"><label for="fHours">Horários</label><input type="text" id="fHours"></div>
               <div class="form-group">
                 <label for="fStatus">Status</label>
-                <select id="fStatus">
-                  <option value="novo">Novo</option>
-                  <option value="abordagem">Abordagem</option>
-                  <option value="follow1">Follow 1</option>
-                  <option value="follow2">Follow 2</option>
-                  <option value="backlog">Backlog</option>
-                  <option value="interessado">Interessado</option>
-                  <option value="proposta">Proposta enviada</option>
-                  <option value="negociacao">Em negociação</option>
-                  <option value="convertido">Convertido</option>
-                  <option value="descartado">Descartado</option>
-                </select>
+                <select id="fStatus"></select>
               </div>
-              <div class="form-group full"><label for="fNotes">Observações</label><textarea id="fNotes" rows="3"></textarea></div>
+              <div class="form-group full"><label for="fNotes">Observações</label><textarea id="fNotes"
+                  rows="3"></textarea></div>
             </div>
             <p class="hint">Temperatura 0–5 calculada automaticamente pelos dados.</p>
             <div class="form-actions">
@@ -264,6 +263,17 @@
           <button id="btnNewTemplate" class="btn btn-primary">+ Novo</button>
         </header>
         <div id="templatesList" class="templates-list"></div>
+      </section>
+
+      <section id="view-statuses" class="view">
+        <header class="view-header">
+          <div>
+            <h2>Status</h2>
+            <p class="subtitle">Personalize as etapas do seu funil</p>
+          </div>
+          <button id="btnNewStatus" class="btn btn-primary">+ Novo status</button>
+        </header>
+        <div id="statusesList" class="templates-list"></div>
       </section>
 
       <section id="view-import" class="view">
@@ -309,16 +319,6 @@
             <h3>Baixar JSON</h3>
             <button id="btnExportJson" class="btn btn-primary">Baixar JSON</button>
           </div>
-          <div class="action-card">
-            <div class="action-icon">📊</div>
-            <h3>Planilha</h3>
-            <button id="btnTestSheets" class="btn btn-outline">Testar conexão</button>
-            <button id="btnRefreshData2" class="btn btn-primary" style="margin-top:8px">Recarregar leads</button>
-            <p id="sheetsSyncStatus" class="hint" style="margin-top:8px"></p>
-          </div>
-        </div>
-        <div class="form-card" style="margin-top:24px">
-          <p id="sheetsConnectionStatus" class="hint">Configure a URL do Web App em Configurações.</p>
         </div>
       </section>
 
@@ -326,27 +326,10 @@
         <header class="view-header">
           <div>
             <h2>Configurações</h2>
-            <p class="subtitle">Google, planilha e follow-up</p>
+            <p class="subtitle">Firestore e follow-up</p>
           </div>
         </header>
         <div class="form-card">
-          <h3 style="margin-bottom:12px;font-size:15px">Login Google</h3>
-          <div class="form-group">
-            <label for="googleClientId">Client ID (OAuth)</label>
-            <input type="text" id="googleClientId" placeholder="xxxxx.apps.googleusercontent.com">
-            <p class="hint">Google Cloud Console → Credenciais → ID do cliente OAuth (Web). Origens autorizadas: URL do sistema ou http://localhost.</p>
-          </div>
-          <hr class="divider">
-          <h3 style="margin-bottom:12px;font-size:15px">Google Sheets</h3>
-          <div class="form-group">
-            <label for="sheetsWebAppUrl">URL do Web App</label>
-            <input type="url" id="sheetsWebAppUrl" placeholder="https://script.google.com/macros/s/XXXX/exec">
-          </div>
-          <div class="form-group">
-            <label for="sheetsName">Nome da aba</label>
-            <input type="text" id="sheetsName" value="leads">
-          </div>
-          <hr class="divider">
           <h3 style="margin-bottom:12px;font-size:15px">Follow-up</h3>
           <div class="form-group">
             <label for="followUpDays">Dias para follow-up pendente</label>
@@ -356,6 +339,16 @@
           <div class="form-group">
             <label for="backlogMonths">Após Follow 2 → backlog (meses)</label>
             <input type="number" id="backlogMonths" min="1" max="240" value="180">
+          </div>
+          <div class="form-group">
+            <label for="dailySafeLimit">Limite diário seguro (WhatsApp)</label>
+            <input type="number" id="dailySafeLimit" min="1" max="999" value="20">
+            <p class="hint">Abaixo deste número o contador fica 🟢 verde.</p>
+          </div>
+          <div class="form-group">
+            <label for="dailyWarnLimit">Limite de alerta (WhatsApp)</label>
+            <input type="number" id="dailyWarnLimit" min="1" max="999" value="30">
+            <p class="hint">A partir daqui o contador fica 🔴 vermelho. Não passe desse valor!</p>
           </div>
           <div class="form-group">
             <label for="defaultCountry">Código país WhatsApp</label>
@@ -383,19 +376,24 @@
         <div class="help-cards">
           <div class="help-card">
             <h3>Temperatura 0–5 (sites / landing)</h3>
-            <p>+1 telefone · +1 WhatsApp · <strong>+2 sem site ou site fraco</strong> (Instagram, Linktree, etc.) · +1 nota ≥ 4,0 e ≥ 20 avaliações · +1 nicho digital-dependente (máx. 5).</p>
+            <p>+1 telefone · +1 WhatsApp · <strong>+2 sem site ou site fraco</strong> (Instagram, Linktree, etc.) · +1
+              nota ≥ 4,0 e ≥ 20 avaliações · +1 nicho digital-dependente (máx. 5).</p>
           </div>
           <div class="help-card">
             <h3>Funil de contato</h3>
-            <p><strong>novo</strong> → <strong>abordagem</strong> → <strong>follow1</strong> → <strong>follow2</strong> → <strong>backlog</strong> · Se o lead responder, siga para <strong>interessado</strong> → <strong>proposta</strong> → <strong>negociacao</strong> → <strong>convertido</strong>. Sem interesse: <strong>descartado</strong>.</p>
+            <p><strong>novo</strong> → <strong>abordagem</strong> → <strong>follow1</strong> → <strong>follow2</strong>
+              → <strong>backlog</strong> · Se o lead responder, siga para <strong>interessado</strong> →
+              <strong>proposta</strong> → <strong>negociacao</strong> → <strong>convertido</strong>. Sem interesse:
+              <strong>descartado</strong>.
+            </p>
           </div>
           <div class="help-card">
-            <h3>Sem localStorage de leads</h3>
-            <p>Tudo na planilha. Só configurações/templates ficam no navegador.</p>
+            <h3>Dados no Firestore</h3>
+            <p>Os leads ficam no Firestore, vinculados à sua conta Google. Configurações locais ficam no navegador.</p>
           </div>
           <div class="help-card">
             <h3>Login Google</h3>
-            <p>Obrigatório para usar o app. Restrinja e-mails em Code.gs (ALLOWED_EMAILS) se quiser.</p>
+            <p>Obrigatório para usar o app.</p>
           </div>
         </div>
       </section>
@@ -405,7 +403,9 @@
   <div id="editModal" class="modal hidden">
     <div class="modal-backdrop"></div>
     <div class="modal-content">
-      <header class="modal-header"><h3>Editar lead</h3><button class="modal-close" id="modalClose">&times;</button></header>
+      <header class="modal-header">
+        <h3>Editar lead</h3><button class="modal-close" id="modalClose">&times;</button>
+      </header>
       <form id="editForm">
         <input type="hidden" id="editId">
         <div class="form-grid">
@@ -413,7 +413,8 @@
           <div class="form-group"><label for="eCategory">Nicho</label><input type="text" id="eCategory"></div>
           <div class="form-group full"><label for="eAddress">Endereço</label><input type="text" id="eAddress"></div>
           <div class="form-group"><label for="ePhone">Telefone</label><input type="text" id="ePhone"></div>
-          <div class="form-group"><label class="checkbox-label"><input type="checkbox" id="eHasWhatsApp"> Tem WhatsApp</label></div>
+          <div class="form-group"><label class="checkbox-label"><input type="checkbox" id="eHasWhatsApp"> Tem
+              WhatsApp</label></div>
           <div class="form-group"><label for="eEmail">E-mail</label><input type="email" id="eEmail"></div>
           <div class="form-group"><label for="eWebsite">Website</label><input type="url" id="eWebsite"></div>
           <div class="form-group"><label for="eRating">Nota</label><input type="text" id="eRating"></div>
@@ -421,21 +422,12 @@
           <div class="form-group"><label for="eHours">Horários</label><input type="text" id="eHours"></div>
           <div class="form-group">
             <label for="eStatus">Status</label>
-            <select id="eStatus">
-              <option value="novo">Novo</option>
-              <option value="abordagem">Abordagem</option>
-              <option value="follow1">Follow 1</option>
-              <option value="follow2">Follow 2</option>
-              <option value="backlog">Backlog</option>
-              <option value="interessado">Interessado</option>
-              <option value="proposta">Proposta enviada</option>
-              <option value="negociacao">Em negociação</option>
-              <option value="convertido">Convertido</option>
-              <option value="descartado">Descartado</option>
-            </select>
+            <select id="eStatus"></select>
           </div>
-          <div class="form-group"><label for="eNextContact">Próximo contato</label><input type="date" id="eNextContact"></div>
-          <div class="form-group full"><label for="eNotes">Observações</label><textarea id="eNotes" rows="3"></textarea></div>
+          <div class="form-group"><label for="eNextContact">Próximo contato</label><input type="date" id="eNextContact">
+          </div>
+          <div class="form-group full"><label for="eNotes">Observações</label><textarea id="eNotes" rows="3"></textarea>
+          </div>
         </div>
         <div class="form-actions">
           <button type="submit" class="btn btn-primary">Salvar na planilha</button>
@@ -448,10 +440,16 @@
   <div id="waModal" class="modal hidden">
     <div class="modal-backdrop"></div>
     <div class="modal-content">
-      <header class="modal-header"><h3>Enviar WhatsApp</h3><button class="modal-close" id="waModalClose">&times;</button></header>
-      <div class="form-group"><label>Lead</label><p id="waLeadName" class="wa-lead-name"></p></div>
-      <div class="form-group"><label for="waTemplateSelect">Template</label><select id="waTemplateSelect"></select></div>
-      <div class="form-group"><label for="waMessagePreview">Mensagem</label><textarea id="waMessagePreview" rows="10"></textarea></div>
+      <header class="modal-header">
+        <h3>Enviar WhatsApp</h3><button class="modal-close" id="waModalClose">&times;</button>
+      </header>
+      <div class="form-group"><label>Lead</label>
+        <p id="waLeadName" class="wa-lead-name"></p>
+      </div>
+      <div class="form-group"><label for="waTemplateSelect">Template</label><select id="waTemplateSelect"></select>
+      </div>
+      <div class="form-group"><label for="waMessagePreview">Mensagem</label><textarea id="waMessagePreview"
+          rows="10"></textarea></div>
       <div class="form-actions">
         <button type="button" id="btnOpenWhatsApp" class="btn btn-primary">📱 Abrir WhatsApp</button>
         <button type="button" id="btnMarkSent" class="btn btn-outline">Marcar como enviado</button>
@@ -463,7 +461,10 @@
   <div id="templateModal" class="modal hidden">
     <div class="modal-backdrop"></div>
     <div class="modal-content">
-      <header class="modal-header"><h3 id="templateModalTitle">Novo template</h3><button class="modal-close" id="templateModalClose">&times;</button></header>
+      <header class="modal-header">
+        <h3 id="templateModalTitle">Novo template</h3><button class="modal-close"
+          id="templateModalClose">&times;</button>
+      </header>
       <form id="templateForm">
         <input type="hidden" id="templateId">
         <div class="form-group"><label for="tName">Nome</label><input type="text" id="tName" required></div>
@@ -480,7 +481,8 @@
             <option value="custom">Outro</option>
           </select>
         </div>
-        <div class="form-group"><label for="tBody">Mensagem</label><textarea id="tBody" rows="10" required></textarea></div>
+        <div class="form-group"><label for="tBody">Mensagem</label><textarea id="tBody" rows="10" required></textarea>
+        </div>
         <div class="form-actions">
           <button type="submit" class="btn btn-primary">Salvar</button>
           <button type="button" class="btn btn-outline" id="templateModalCancel">Cancelar</button>
@@ -489,8 +491,45 @@
     </div>
   </div>
 
+  <div id="statusModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <header class="modal-header">
+        <h3 id="statusModalTitle">Novo status</h3>
+        <button class="modal-close" id="statusModalClose">&times;</button>
+      </header>
+      <form id="statusForm">
+        <input type="hidden" id="stId">
+        <div class="form-group">
+          <label for="stLabel">Nome exibido *</label>
+          <input type="text" id="stLabel" required placeholder="Ex: Em negociação">
+        </div>
+        <div class="form-group">
+          <label for="stKey">Chave (slug) *</label>
+          <input type="text" id="stKey" required placeholder="negociacao">
+          <p class="hint">Só letras minúsculas, números e _ . Ex: follow1, proposta, visita_agendada.</p>
+        </div>
+        <div class="form-group">
+          <label for="stOrder">Ordem no funil</label>
+          <input type="number" id="stOrder" value="10" min="1" max="999">
+        </div>
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="stIsFinal"> É status final (encerra o lead)
+          </label>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Salvar</button>
+          <button type="button" class="btn btn-outline" id="statusModalCancel">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div id="toast" class="toast hidden"></div>
-  <script src="assets/js/app.js"></script>
+  <script type="module" src="assets/js/firebase-service.js"></script>
+  <script src="assets/js/app.js" defer></script>
   <script src="assets/js/pwa.js"></script>
 </body>
+
 </html>

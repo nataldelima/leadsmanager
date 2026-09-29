@@ -1,18 +1,25 @@
 {
-  "id": "/lead-extractor-web/index.html",
-  "name": "Lead Manager — Natal de Lima",
-  "short_name": "Lead Manager",
+  "id": "/leads-manager/index.html",
+  "name": "Leads Manager — Natal de Lima",
+  "short_name": "Leads Manager",
   "description": "Gestor de leads capturados do Google Maps. Dashboard, follow-up e WhatsApp integrados.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui"
+  ],
   "orientation": "any",
   "background_color": "#1a2030",
   "theme_color": "#1a2030",
   "lang": "pt-BR",
   "dir": "ltr",
-  "categories": ["business", "productivity"],
+  "categories": [
+    "business",
+    "productivity"
+  ],
   "icons": [
     {
       "src": "assets/img/lead-manager-192.png",
@@ -60,13 +67,23 @@
       "short_name": "Novo",
       "description": "Adicionar um lead manualmente",
       "url": "./index.html#add",
-      "icons": [{ "src": "assets/img/lead-manager-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "assets/img/lead-manager-192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "Dashboard",
       "short_name": "Dashboard",
       "url": "./index.html#dashboard",
-      "icons": [{ "src": "assets/img/lead-manager-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "assets/img/lead-manager-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }
