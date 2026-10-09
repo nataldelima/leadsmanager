@@ -64,15 +64,18 @@
   </div>
 
   <div id="appRoot" class="app hidden">
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div class="logo">
           <img src="assets/img/logo.svg" alt="Leads Manager" />
         </div>
         <div>
-          <h1>Lead Manager</h1>
+          <h1>Leads Manager</h1>
           <p class="tagline">Google Maps → Firestore</p>
         </div>
+        <button type="button" class="hamburger" id="btnHamburger" aria-label="Abrir menu">
+          <span class="hamburger-icon">☰</span>
+        </button>
       </div>
       <nav class="nav">
         <button class="nav-item active" data-view="dashboard"><span
@@ -177,6 +180,12 @@
               <option value="yes">Com WhatsApp</option>
               <option value="no">Sem WhatsApp</option>
             </select>
+            <select id="websiteFilter">
+              <option value="all">Site: todos</option>
+              <option value="yes">Com site</option>
+              <option value="weak">Site fraco (rede social)</option>
+              <option value="no">Sem site</option>
+            </select>
           </div>
         </header>
         <div class="toolbar">
@@ -247,7 +256,7 @@
             </div>
             <p class="hint">Temperatura 0–5 calculada automaticamente pelos dados.</p>
             <div class="form-actions">
-              <button type="submit" class="btn btn-primary">Salvar na planilha</button>
+              <button type="submit" class="btn btn-primary">Salvar</button>
               <button type="reset" class="btn btn-outline">Limpar</button>
             </div>
           </form>
@@ -341,6 +350,16 @@
             <input type="number" id="backlogMonths" min="1" max="240" value="180">
           </div>
           <div class="form-group">
+            <label for="nextContactDays">Dias para próximo contato (após envio)</label>
+            <input type="number" id="nextContactDays" min="1" max="365" value="3">
+            <p class="hint">Ao enviar uma mensagem, agenda automaticamente o próximo contato para N dias depois.</p>
+          </div>
+          <div class="form-group">
+            <label for="snoozeDays">Dias do botão "Adiar" 📅</label>
+            <input type="number" id="snoozeDays" min="1" max="365" value="3">
+            <p class="hint">Quantos dias o botão de adiar empurra o próximo contato.</p>
+          </div>
+          <div class="form-group">
             <label for="dailySafeLimit">Limite diário seguro (WhatsApp)</label>
             <input type="number" id="dailySafeLimit" min="1" max="999" value="20">
             <p class="hint">Abaixo deste número o contador fica 🟢 verde.</p>
@@ -430,7 +449,7 @@
           </div>
         </div>
         <div class="form-actions">
-          <button type="submit" class="btn btn-primary">Salvar na planilha</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
           <button type="button" class="btn btn-outline" id="modalCancel">Cancelar</button>
         </div>
       </form>

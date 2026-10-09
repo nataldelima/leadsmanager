@@ -111,7 +111,9 @@
     defaultHasWhatsApp: true,
     confirmDelete: true,
     dailySafeLimit: 20,
-    dailyWarnLimit: 30
+    dailyWarnLimit: 30,
+    nextContactDays: 3,
+    snoozeDays: 3
   };
   let selectedIds = new Set();
   let waContext = { leadId: null, templateKey: null, counted: false };
@@ -185,6 +187,22 @@
     return false;
   }
 
+  function isValidWebsite(url) {
+    if (!url) return false;
+    var u = String(url).trim();
+    if (u.length < 8) return false;
+    if (u.indexOf('.') === -1) return false;
+    if (u.indexOf(' ') !== -1) return false;
+    return true;
+  }
+
+  function normalizeUrl(url) {
+    var u = String(url || '').trim();
+    if (!u) return '';
+    if (u.indexOf('http://') === 0 || u.indexOf('https://') === 0) return u;
+    return 'https://' + u;
+  }
+
   function calcTemperature(lead) {
     var score = 0;
     var phone = String(lead.phone || '').replace(/\D/g, '');
@@ -214,11 +232,17 @@
     return d;
   }
 
+  function detectOS() {
+    const userAgent = window.navigator.userAgent;
+    return (/Android|iPhone|iPad|iPod|Windows/i.test(userAgent)) ? "api" : "web";
+  }
+
   function waMeUrl(phone, text) {
     var num = toWaNumber(phone);
+    const app = detectOS();
     if (!num) return '';
-    var base = 'https://wa.me/' + num;
-    return text ? base + '?text=' + encodeURIComponent(text) : base;
+    var base = `https://${app}.whatsapp.com/send?phone=${num}`;
+    return text ? base + '&text=' + encodeURIComponent(text) : base;
   }
 
   function extractCity(address) {
@@ -258,6 +282,11 @@
   function addMonths(date, months) {
     var d = new Date(date);
     d.setMonth(d.getMonth() + months);
+    return d;
+  }
+  function addDays(date, days) {
+    var d = new Date(date);
+    d.setDate(d.getDate() + days);
     return d;
   }
 
@@ -350,10 +379,8 @@
     setChk('defaultHasWhatsApp', settings.defaultHasWhatsApp);
     setChk('confirmDelete', settings.confirmDelete);
     setChk('fHasWhatsApp', settings.defaultHasWhatsApp);
-  }
-
-  function saveSettings() {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    setVal('nextContactDays', settings.nextContactDays || 3);
+    setVal('snoozeDays', settings.snoozeDays || 3);
   }
 
   function loadSession() {
@@ -663,16 +690,33 @@
     var niche = document.getElementById('nicheFilter').value;
     var temp = document.getElementById('tempFilter').value;
     var wa = document.getElementById('whatsappFilter').value;
+    var site = document.getElementById('websiteFilter').value;
 
-    var list = leads.filter(l => {
+    var list = leads.filter(function (l) {
+      // Filtros de coluna
       if (status !== 'all' && (l.status || 'novo') !== status) return false;
       if (niche !== 'all' && (l.category || '').trim() !== niche) return false;
       if (temp !== 'all' && String(l.temperature || 0) !== temp) return false;
       if (wa === 'yes' && !l.hasWhatsApp) return false;
       if (wa === 'no' && l.hasWhatsApp) return false;
-      if (!q) return true;
-      var hay = [l.name, l.category, l.address, l.phone, l.email, l.notes, l.status].join(' ').toLowerCase();
-      return hay.indexOf(q) !== -1;
+
+      // Filtro de site
+      var w = (l.website || '').trim();
+      var hasReal = w && isValidWebsite(w) && !isWeakWebsite(w);  // URL boa e não é rede social
+      var hasWeak = w && isWeakWebsite(w);                        // tem URL mas é rede social
+      var hasNone = !w;                                           // sem nada
+
+      if (site === 'yes' && !hasReal) return false;
+      if (site === 'weak' && !hasWeak) return false;
+      if (site === 'no' && !hasNone) return false;
+
+      // Busca textual (por último)
+      if (q) {
+        var hay = [l.name, l.category, l.address, l.phone, l.email, l.notes, l.status].join(' ').toLowerCase();
+        if (hay.indexOf(q) === -1) return false;
+      }
+
+      return true;
     });
 
     var key = sortState.key;
@@ -785,8 +829,7 @@
       if (l.phone) {
         if (l.hasWhatsApp) {
           phoneHtml = '<div class="phone-cell"><a class="wa-link" href="' + escapeAttr(waMeUrl(l.phone)) +
-            '" target="_blank" rel="noopener">' + escapeHtml(l.phone) + '</a><span class="wa-badge">WA</span>' +
-            '<button type="button" class="btn-icon wa" title="Enviar WhatsApp" data-action="whatsapp" data-id="' + l.id + '">💬</button></div>';
+            '" target="_blank" rel="noopener">' + escapeHtml(l.phone) + '</a><span class="wa-badge">WA</span></div>';
         } else {
           phoneHtml = '<a class="phone-link" href="tel:' + phoneDigits(l.phone) + '">' + escapeHtml(l.phone) + '</a>';
         }
@@ -794,7 +837,7 @@
 
       return '<tr data-id="' + l.id + '"' + (overdue ? ' class="row-overdue"' : '') + '>' +
         '<td class="col-check"><input type="checkbox" class="row-check" data-id="' + l.id + '" ' + checked + '></td>' +
-        '<td><div class="lead-name">' + escapeHtml(l.name || '—') +
+        '<td><div class="lead-name lead-name-clickable" data-action="edit" data-id="' + l.id + '" role="button" tabindex="0">' + escapeHtml(l.name || '—') +
         (overdue ? '<span class="overdue-dot" title="Follow-up vencido"></span>' : '') +
         (l.address ? '<small>' + escapeHtml(l.address) + '</small>' : '') + '</div></td>' +
         '<td>' + escapeHtml(l.category || '—') + '</td>' +
@@ -803,8 +846,10 @@
         '<td><span class="status-badge status-' + escapeAttr(status) + '">' + escapeHtml(statusLabel(status)) + '</span></td>' +
         '<td>' + formatDate(l.lastContactAt) + '</td>' +
         '<td class="col-actions">' +
+        (l.hasWhatsApp && l.phone ? '<button type="button" class="btn-icon wa" title="Enviar WhatsApp" data-action="whatsapp" data-id="' + l.id + '">💬</button>' : '') +
+        (isValidWebsite(l.website) ? '<a class="btn-icon web" href="' + escapeAttr(normalizeUrl(l.website)) + '" target="_blank" rel="noopener" title="Abrir site">🌐</a>' : '') +
         '<button type="button" class="btn-icon" title="Editar" data-action="edit" data-id="' + l.id + '">✏️</button>' +
-        '<button type="button" class="btn-icon snooze" title="Adiar 3 dias" data-action="snooze" data-id="' + l.id + '">📅</button>' +
+        '<button type="button" class="btn-icon snooze" title="Adiar" data-action="snooze" data-id="' + l.id + '">📅</button>' +
         '<button type="button" class="btn-icon danger" title="Excluir" data-action="delete" data-id="' + l.id + '">🗑️</button>' +
         '</td></tr>';
     }).join('');
@@ -903,7 +948,7 @@
     await updateLeadRemote(lead);
     renderTable();
     renderDashboard();
-    toast('Adiado por ' + days + ' dias');
+    toast('Adiado por ' + days + ' dia' + (days > 1 ? 's' : ''));
   }
 
   async function updateLeadRemote(lead) {
@@ -1093,6 +1138,7 @@
     var lead = leads.find(l => l.id === waContext.leadId);
     if (!lead) return;
 
+    // Contador diário
     if (!waContext.counted) {
       try {
         await window.fb.incrementDailyCounter();
@@ -1104,19 +1150,28 @@
     var key = waContext.templateKey;
     lead.lastContactAt = new Date().toISOString();
 
+    // Agendamento automático do próximo contato (usa nextContactDays das settings)
+    var interval = parseInt(settings.nextContactDays, 10) || 3;
+
     if (key === 'abordagem') {
       lead.status = 'abordagem';
+      lead.nextContactAt = addDays(new Date(), interval).toISOString();
     } else if (key === 'follow1') {
       lead.status = 'follow1';
+      lead.nextContactAt = addDays(new Date(), interval).toISOString();
     } else if (key === 'follow2') {
       lead.status = 'backlog';
+      // Follow 2 encerra o ciclo: cai para o backlog (meses)
       lead.nextContactAt = addMonths(new Date(), parseInt(settings.backlogMonths, 10) || 180).toISOString();
     } else if (key === 'objecao' || key === 'proposta') {
       lead.status = 'negociacao';
+      lead.nextContactAt = addDays(new Date(), interval).toISOString();
     } else if (key === 'exemplos') {
       lead.status = 'interessado';
+      lead.nextContactAt = addDays(new Date(), interval).toISOString();
     } else if (key === 'encerramento') {
       lead.status = 'descartado';
+      lead.nextContactAt = null;    // encerrado, sem próximo contato
     }
 
     await updateLeadRemote(lead);
@@ -1235,8 +1290,22 @@
      EVENTOS
      ========================================================= */
   function bindEvents() {
+    var btnHamburger = document.getElementById('btnHamburger');
+    if (btnHamburger) {
+      btnHamburger.addEventListener('click', function () {
+        var sidebar = document.getElementById('sidebar');
+        sidebar.classList.toggle('nav-open');
+        btnHamburger.setAttribute('aria-label',
+          sidebar.classList.contains('nav-open') ? 'Fechar menu' : 'Abrir menu');
+      });
+    }
     document.querySelectorAll('.nav-item').forEach(btn => {
-      btn.addEventListener('click', () => showView(btn.dataset.view));
+      btn.addEventListener('click', () => {
+        showView(btn.dataset.view);
+        // fecha o menu em mobile
+        var sidebar = document.getElementById('sidebar');
+        if (sidebar) sidebar.classList.remove('nav-open');
+      });
     });
     document.querySelectorAll('[data-goto]').forEach(btn => {
       btn.addEventListener('click', () => showView(btn.dataset.goto));
@@ -1255,7 +1324,7 @@
       });
     });
 
-    ['searchInput', 'statusFilter', 'nicheFilter', 'tempFilter', 'whatsappFilter'].forEach(id => {
+    ['searchInput', 'statusFilter', 'nicheFilter', 'tempFilter', 'whatsappFilter', 'websiteFilter'].forEach(id => {
       var el = document.getElementById(id);
       if (!el) return;
       var on = () => { pageState.page = 1; renderTable(); };
@@ -1287,7 +1356,7 @@
         deleteLeadsRemote([id]).then(() => { renderTable(); renderDashboard(); });
       }
       if (btn.dataset.action === 'whatsapp') openWaModal(id);
-      if (btn.dataset.action === 'snooze') snoozeLead(id, 3);
+      if (btn.dataset.action === 'snooze') snoozeLead(id, parseInt(settings.snoozeDays, 10) || 3);
     });
 
     document.getElementById('btnBulkDelete').addEventListener('click', () => {
@@ -1417,6 +1486,8 @@
       settings.confirmDelete = document.getElementById('confirmDelete').checked;
       settings.dailySafeLimit = parseInt(document.getElementById('dailySafeLimit').value, 10) || 20;
       settings.dailyWarnLimit = parseInt(document.getElementById('dailyWarnLimit').value, 10) || 30;
+      settings.nextContactDays = parseInt(document.getElementById('nextContactDays').value, 10) || 3;
+      settings.snoozeDays = parseInt(document.getElementById('snoozeDays').value, 10) || 3;
 
       await saveSettings();          // ⬅️ agora é async
       toast('Configurações salvas');
