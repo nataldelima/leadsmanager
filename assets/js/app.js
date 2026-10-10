@@ -522,7 +522,7 @@
   /* =========================================================
      NAVEGAÇÃO
      ========================================================= */
-  function showView(name) {
+  function showView(name, opts) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
     var view = document.getElementById('view-' + name);
@@ -533,7 +533,7 @@
     if (name === 'dashboard') renderDashboard();
     if (name === 'templates') renderTemplates();
     if (name === 'statuses') renderStatuses();
-    if (name === 'reports') loadReport();
+    if (name === 'reports' && !(opts && opts.skipReportLoad)) loadReport();
   }
 
   function updateCounts() {
@@ -1434,8 +1434,14 @@
     return 'Período: <strong>' + fmt(s) + '</strong> a <strong>' + fmt(e) + '</strong>';
   }
 
-  async function loadReport() {
-    var range = getReportRange();
+  async function loadReport(savedReport) {
+    var range;
+    if (savedReport && savedReport.startIso && savedReport.endIso) {
+      // Quando vem do botão "Ver", usa os ISOs originais exatos (sem recalcular)
+      range = { start: savedReport.startIso, end: savedReport.endIso };
+    } else {
+      range = getReportRange();
+    }
     reportData.startIso = range.start;
     reportData.endIso = range.end;
 
@@ -1444,13 +1450,30 @@
       var items = await window.fb.listInteractionsByPeriod(range.start, range.end);
       reportData.interactions = items;
       renderReport();
-      await loadSavedReportForPeriod(range.start, range.end);
+
+      if (savedReport) {
+        // Mostra o relatório salvo diretamente, sem tentar rebuscar
+        showSavedReportContent(savedReport);
+      } else {
+        await loadSavedReportForPeriod(range.start, range.end);
+      }
     } catch (e) {
       console.error(e);
       toast('Erro ao carregar relatório: ' + e.message, 'error');
     } finally {
       setLoading(false);
     }
+  }
+
+  function showSavedReportContent(savedReport) {
+    reportData.savedReportId = savedReport.id;
+    reportData.aiContent = savedReport.content;
+    var contentEl = document.getElementById('aiReportContent');
+    contentEl.innerHTML =
+      '<pre style="white-space: pre-wrap; font-family: inherit;">' +
+      escapeHtml(savedReport.content) + '</pre>';
+    document.getElementById('btnSaveReport').classList.add('hidden');
+    document.getElementById('btnExportReportPdf').classList.remove('hidden');
   }
 
   async function loadSavedReportForPeriod(startIso, endIso) {
@@ -2105,13 +2128,16 @@
               return all.find(function (r) { return r.id === id; });
             });
             if (!rep) { toast('Relatório não encontrado', 'error'); return; }
+
+            // Ajusta os campos do filtro para refletir o período do relatório
             document.getElementById('reportPeriod').value = 'custom';
             document.getElementById('reportCustomRange').classList.remove('hidden');
             document.getElementById('reportStart').value = rep.startIso.slice(0, 10);
             document.getElementById('reportEnd').value = rep.endIso.slice(0, 10);
+
             closeSavedReportsModal();
-            showView('reports');
-            await loadReport();
+            showView('reports', { skipReportLoad: true });   // ⬅️ evita o load duplicado
+            await loadReport(rep);                            // ⬅️ passa o relatório salvo
             toast('Relatório carregado');
           } catch (err) {
             console.error(err);
