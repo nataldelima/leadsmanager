@@ -88,10 +88,10 @@
         </button>
         <button class="nav-item" data-view="add"><span class="nav-icon">➕</span><span>Adicionar</span></button>
         <button class="nav-item" data-view="templates"><span class="nav-icon">💬</span><span>Templates</span></button>
+        <button class="nav-item" data-view="reports"><span class="nav-icon">📈</span><span>Relatórios</span></button>
         <button class="nav-item" data-view="statuses"><span class="nav-icon">🏷️</span><span>Status</span></button>
         <button class="nav-item" data-view="import"><span class="nav-icon">📥</span><span>Importar</span></button>
-        <button class="nav-item" data-view="export"><span class="nav-icon">📤</span><span>Exportar /
-            Sheets</span></button>
+        <button class="nav-item" data-view="export"><span class="nav-icon">📤</span><span>Exportar</span></button>
         <button class="nav-item" data-view="settings"><span
             class="nav-icon">⚙️</span><span>Configurações</span></button>
         <button class="nav-item" data-view="help"><span class="nav-icon">❓</span><span>Ajuda</span></button>
@@ -285,6 +285,83 @@
         <div id="statusesList" class="templates-list"></div>
       </section>
 
+      <section id="view-reports" class="view">
+        <header class="view-header">
+          <div>
+            <h2>Relatórios</h2>
+            <p class="subtitle">Análise de interações por período</p>
+          </div>
+          <div class="header-actions">
+            <select id="reportPeriod">
+              <option value="7d">Últimos 7 dias</option>
+              <option value="30d" selected>Últimos 30 dias</option>
+              <option value="90d">Últimos 90 dias</option>
+              <option value="month">Este mês</option>
+              <option value="last_month">Mês passado</option>
+              <option value="year">Este ano</option>
+              <option value="custom">Personalizado…</option>
+            </select>
+            <div id="reportCustomRange" class="report-custom-range hidden">
+              <input type="date" id="reportStart">
+              <span>até</span>
+              <input type="date" id="reportEnd">
+              <button id="btnApplyCustomRange" class="btn btn-sm btn-primary">Aplicar</button>
+            </div>
+            <button id="btnRefreshReport" class="btn btn-outline">🔄 Atualizar</button>
+            <button id="btnExportReportCsv" class="btn btn-outline">📄 CSV</button>
+            <button id="btnSavedReports" class="btn btn-outline">📚 Histórico</button>
+
+          </div>
+        </header>
+
+        <div class="report-period-label" id="reportPeriodLabel"></div>
+
+        <div class="metrics-grid" id="reportKpis"></div>
+
+        <div class="dashboard-row">
+          <div class="dash-card">
+            <h3>Interações por dia</h3>
+            <div id="reportDailyChart" class="bar-chart"></div>
+          </div>
+          <div class="dash-card">
+            <h3>Funil no período (status atingidos)</h3>
+            <div id="reportFunnel" class="funnel"></div>
+          </div>
+        </div>
+
+        <div class="dashboard-row" style="margin-top:16px">
+          <div class="dash-card">
+            <h3>Top templates usados</h3>
+            <div id="reportTopTemplates" class="rank-list"></div>
+          </div>
+          <div class="dash-card">
+            <h3>Leads mais trabalhados</h3>
+            <div id="reportTopLeads" class="rank-list"></div>
+          </div>
+        </div>
+
+        <div class="dashboard-row" style="margin-top:16px">
+          <div class="dash-card" style="grid-column: 1 / -1">
+            <h3>Transições mais comuns</h3>
+            <div id="reportTransitions" class="rank-list"></div>
+          </div>
+        </div>
+
+        <div class="dash-card" style="grid-column: 1 / -1">
+          <div class="ai-report-header">
+            <h3>Análise Inteligente do Período</h3>
+            <div class="ai-report-actions">
+              <button id="btnGenerateAIReport" class="btn btn-primary">✨ Gerar Análise com IA</button>
+              <button id="btnSaveReport" class="btn btn-outline hidden">💾 Salvar</button>
+              <button id="btnExportReportPdf" class="btn btn-outline hidden">🖨️ PDF</button>
+            </div>
+          </div>
+          <div id="aiReportContent" class="help-card">
+            <p>Clique no botão acima para gerar uma análise detalhada do período selecionado.</p>
+          </div>
+        </div>
+      </section>
+
       <section id="view-import" class="view">
         <header class="view-header">
           <div>
@@ -313,8 +390,8 @@
       <section id="view-export" class="view">
         <header class="view-header">
           <div>
-            <h2>Exportar / Sheets</h2>
-            <p class="subtitle">Backup local ou testar conexão</p>
+            <h2>Exportar</h2>
+            <p class="subtitle">Backup local (CSV e JSON)</p>
           </div>
         </header>
         <div class="cards-grid">
@@ -545,8 +622,42 @@
     </div>
   </div>
 
+  <div id="historyModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <header class="modal-header">
+        <h3>Histórico do lead</h3>
+        <button class="modal-close" id="historyModalClose">&times;</button>
+      </header>
+      <p id="historyLeadName" class="wa-lead-name" style="margin-bottom:12px"></p>
+      <div id="historyList" class="history-list">
+        <p class="empty-mini">Carregando...</p>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline" id="historyModalCloseBtn">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="savedReportsModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <header class="modal-header">
+        <h3>Relatórios salvos</h3>
+        <button class="modal-close" id="savedReportsClose">&times;</button>
+      </header>
+      <div id="savedReportsList" class="saved-reports-list">
+        <p class="empty-mini">Carregando...</p>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-outline" id="savedReportsCloseBtn">Fechar</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast hidden"></div>
   <script type="module" src="assets/js/firebase-service.js"></script>
+  <script src="assets/js/gemini-service.js"></script>
   <script src="assets/js/app.js" defer></script>
   <script src="assets/js/pwa.js"></script>
 </body>

@@ -18,9 +18,11 @@ import {
     getDocs,
     getFirestore,
     increment,
+    query,
     serverTimestamp,
     setDoc,
     updateDoc,
+    where,
     writeBatch
 } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 
@@ -222,6 +224,37 @@ async function saveSettings(data) {
 }
 
 /* =========================================================
+   INTERACTIONS (histórico de interações)
+   ========================================================= */
+async function addInteraction(data) {
+    const ref = await addDoc(userCol('interactions'), {
+        ...data,
+        createdAt: serverTimestamp()
+    });
+    return { ...data, id: ref.id };
+}
+
+async function listInteractionsByLead(leadId) {
+    // Filtro simples (sem orderBy para não precisar de índice composto)
+    const q = query(userCol('interactions'), where('leadId', '==', leadId));
+    const snap = await getDocs(q);
+    return snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+}
+
+async function listInteractionsByPeriod(startIso, endIso) {
+    // Range em um único campo (timestamp) → sem índice composto
+    const q = query(
+        userCol('interactions'),
+        where('timestamp', '>=', startIso),
+        where('timestamp', '<=', endIso)
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+/* =========================================================
    EXPOSTO GLOBALMENTE
    ========================================================= */
 window.fb = {
@@ -232,7 +265,49 @@ window.fb = {
     listTemplates, addTemplate, updateTemplate, deleteTemplate,
     listStatuses, addStatus, updateStatus, deleteStatus,
     ensureSeed, getTodayCounter, incrementDailyCounter,
-    getSettings, saveSettings
+    getSettings, saveSettings,
+    addInteraction, listInteractionsByLead, listInteractionsByPeriod,
+    saveReport, listReports, getReportByPeriod, deleteReport
 };
 
 console.log('[Firebase] Serviço carregado:', firebaseConfig.projectId);
+
+/* =========================================================
+   REPORTS (relatórios salvos)
+   ========================================================= */
+async function saveReport(data) {
+    const ref = await addDoc(userCol('reports'), {
+        ...data,
+        createdAt: serverTimestamp()
+    });
+    return { ...data, id: ref.id };
+}
+
+async function listReports() {
+    const snap = await getDocs(userCol('reports'));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+async function getReportByPeriod(startIso, endIso) {
+    // Compara apenas a parte de data (YYYY-MM-DD), ignorando hora e ms.
+    // Isso evita falhas quando o usuário seleciona o período via input[type=date]
+    // e o range recalculado tem ms/segundos diferentes do momento em que o relatório foi gerado.
+    const targetStart = String(startIso).slice(0, 10);
+    const targetEnd = String(endIso).slice(0, 10);
+
+    const snap = await getDocs(userCol('reports'));
+    return snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(r => r.startIso && r.endIso &&
+            String(r.startIso).slice(0, 10) === targetStart &&
+            String(r.endIso).slice(0, 10) === targetEnd)
+        .sort((a, b) => {
+            const ta = a.generatedAt ? new Date(a.generatedAt).getTime() : 0;
+            const tb = b.generatedAt ? new Date(b.generatedAt).getTime() : 0;
+            return tb - ta;
+        })[0] || null;
+}
+
+async function deleteReport(id) {
+    await deleteDoc(userDoc('reports', id));
+}

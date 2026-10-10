@@ -120,6 +120,13 @@
   let currentUser = null;
   let sortState = { key: 'name', dir: 'asc' };
   let pageState = { page: 1, pageSize: 25 };
+  let reportData = {
+    interactions: [],
+    startIso: null,
+    endIso: null,
+    savedReportId: null,   // ⬅️ NOVO: id do relatório salvo se houver
+    aiContent: null
+  };
 
   /* =========================================================
      UTILITÁRIOS GERAIS
@@ -456,6 +463,7 @@
     var overdue = getOverdueLeads().length;
     if (overdue > 0) {
       setTimeout(function () {
+        if (!leads.length) return;
         toast('⚠️ ' + overdue + ' follow-up' + (overdue > 1 ? 's' : '') + ' vencido' + (overdue > 1 ? 's' : ''), 'error');
       }, 800);
     }
@@ -525,6 +533,7 @@
     if (name === 'dashboard') renderDashboard();
     if (name === 'templates') renderTemplates();
     if (name === 'statuses') renderStatuses();
+    if (name === 'reports') loadReport();
   }
 
   function updateCounts() {
@@ -850,6 +859,7 @@
         (isValidWebsite(l.website) ? '<a class="btn-icon web" href="' + escapeAttr(normalizeUrl(l.website)) + '" target="_blank" rel="noopener" title="Abrir site">🌐</a>' : '') +
         '<button type="button" class="btn-icon" title="Editar" data-action="edit" data-id="' + l.id + '">✏️</button>' +
         '<button type="button" class="btn-icon snooze" title="Adiar" data-action="snooze" data-id="' + l.id + '">📅</button>' +
+        '<button type="button" class="btn-icon hist" title="Histórico" data-action="history" data-id="' + l.id + '">🕐</button>' +
         '<button type="button" class="btn-icon danger" title="Excluir" data-action="delete" data-id="' + l.id + '">🗑️</button>' +
         '</td></tr>';
     }).join('');
@@ -949,6 +959,25 @@
     renderTable();
     renderDashboard();
     toast('Adiado por ' + days + ' dia' + (days > 1 ? 's' : ''));
+  }
+
+  async function recordInteraction(lead, fromStatus, toStatus, templateKey, templateName, message) {
+    try {
+      await window.fb.addInteraction({
+        leadId: lead.id,
+        leadName: lead.name || '',
+        leadCategory: lead.category || '',
+        fromStatus: fromStatus || '',
+        toStatus: toStatus || fromStatus || '',
+        templateKey: templateKey || '',
+        templateName: templateName || '',
+        message: message || '',
+        channel: 'whatsapp',
+        timestamp: new Date().toISOString()
+      });
+    } catch (e) {
+      console.warn('Falha ao gravar interação:', e);
+    }
   }
 
   async function updateLeadRemote(lead) {
@@ -1133,7 +1162,6 @@
     document.getElementById('waModal').classList.add('hidden');
     waContext = { leadId: null, templateKey: null, counted: false };
   }
-
   async function markMessageSent() {
     var lead = leads.find(l => l.id === waContext.leadId);
     if (!lead) return;
@@ -1148,30 +1176,50 @@
     }
 
     var key = waContext.templateKey;
+    var tpl = templates.find(t => t.id === document.getElementById('waTemplateSelect').value);
+    var message = document.getElementById('waMessagePreview').value || '';
+    var fromStatus = lead.status || 'novo';
     lead.lastContactAt = new Date().toISOString();
 
-    // Agendamento automático do próximo contato (usa nextContactDays das settings)
     var interval = parseInt(settings.nextContactDays, 10) || 3;
 
     if (key === 'abordagem') {
       lead.status = 'abordagem';
       lead.nextContactAt = addDays(new Date(), interval).toISOString();
+      await recordInteraction(lead, fromStatus, lead.status, key, tpl ? tpl.name : '', message);
+
     } else if (key === 'follow1') {
       lead.status = 'follow1';
       lead.nextContactAt = addDays(new Date(), interval).toISOString();
+      await recordInteraction(lead, fromStatus, lead.status, key, tpl ? tpl.name : '', message);
+
     } else if (key === 'follow2') {
+      // 1º: registra o envio do Follow 2 (transição real follow1 → follow2)
+      await recordInteraction(lead, fromStatus, 'follow2', key, tpl ? tpl.name : '', message);
+
+      // 2º: muda o status real para backlog e registra a transição automática
       lead.status = 'backlog';
-      // Follow 2 encerra o ciclo: cai para o backlog (meses)
       lead.nextContactAt = addMonths(new Date(), parseInt(settings.backlogMonths, 10) || 180).toISOString();
+      await recordInteraction(lead, 'follow2', 'backlog', '', '', '');
+
     } else if (key === 'objecao' || key === 'proposta') {
       lead.status = 'negociacao';
       lead.nextContactAt = addDays(new Date(), interval).toISOString();
+      await recordInteraction(lead, fromStatus, lead.status, key, tpl ? tpl.name : '', message);
+
     } else if (key === 'exemplos') {
       lead.status = 'interessado';
       lead.nextContactAt = addDays(new Date(), interval).toISOString();
+      await recordInteraction(lead, fromStatus, lead.status, key, tpl ? tpl.name : '', message);
+
     } else if (key === 'encerramento') {
       lead.status = 'descartado';
-      lead.nextContactAt = null;    // encerrado, sem próximo contato
+      lead.nextContactAt = null;
+      await recordInteraction(lead, fromStatus, lead.status, key, tpl ? tpl.name : '', message);
+
+    } else {
+      // template custom: só registra a interação sem alterar status
+      await recordInteraction(lead, fromStatus, lead.status, key, tpl ? tpl.name : '', message);
     }
 
     await updateLeadRemote(lead);
@@ -1286,9 +1334,609 @@
     document.getElementById('editModal').classList.remove('hidden');
   }
 
+  async function openHistoryModal(leadId) {
+    var lead = leads.find(l => l.id === leadId);
+    if (!lead) return;
+    document.getElementById('historyLeadName').textContent = lead.name + ' · ' + (lead.category || '—');
+    document.getElementById('historyList').innerHTML = '<p class="empty-mini">Carregando...</p>';
+    document.getElementById('historyModal').classList.remove('hidden');
+
+    try {
+      var items = await window.fb.listInteractionsByLead(leadId);
+      renderHistoryList(items, lead);
+    } catch (e) {
+      document.getElementById('historyList').innerHTML =
+        '<p class="empty-mini" style="color:var(--danger)">Erro: ' + escapeHtml(e.message) + '</p>';
+    }
+  }
+
+  function renderHistoryList(items, lead) {
+    var el = document.getElementById('historyList');
+    if (!items.length) {
+      el.innerHTML = '<p class="empty-mini">Nenhuma interação registrada ainda.</p>';
+      return;
+    }
+
+    el.innerHTML = items.map(function (it) {
+      var date = new Date(it.timestamp);
+      var dateStr = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+      var timeStr = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      var fromLbl = statusLabel(it.fromStatus) || it.fromStatus || '—';
+      var toLbl = statusLabel(it.toStatus) || it.toStatus || '—';
+      var transition = (it.fromStatus && it.toStatus && it.fromStatus !== it.toStatus)
+        ? escapeHtml(fromLbl) + ' → <strong>' + escapeHtml(toLbl) + '</strong>'
+        : escapeHtml(toLbl);
+
+      var msgHtml = '';
+      if (it.message) {
+        msgHtml = '<details class="history-msg"><summary>Ver mensagem</summary><pre>' +
+          escapeHtml(it.message) + '</pre></details>';
+      }
+
+      var templateInfo = it.templateName
+        ? '<span class="history-tag">' + escapeHtml(it.templateName) + '</span>'
+        : '';
+
+      return '<div class="history-item">' +
+        '<div class="history-head">' +
+        '<span class="history-date">' + dateStr + ' · ' + timeStr + '</span>' +
+        templateInfo +
+        '</div>' +
+        '<div class="history-transition">' + transition + '</div>' +
+        msgHtml +
+        '</div>';
+    }).join('');
+  }
+
+  function closeHistoryModal() {
+    document.getElementById('historyModal').classList.add('hidden');
+  }
+
+  /* =========================================================
+   RELATÓRIOS
+   ========================================================= */
+  function getReportRange() {
+    var period = document.getElementById('reportPeriod').value;
+    var now = new Date();
+    var start, end;
+
+    end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+
+    if (period === 'custom') {
+      var s = document.getElementById('reportStart').value;
+      var e = document.getElementById('reportEnd').value;
+      start = s ? new Date(s + 'T00:00:00') : new Date(now.getFullYear(), now.getMonth(), 1);
+      end = e ? new Date(e + 'T23:59:59') : end;
+      if (start > end) { var tmp = start; start = end; end = tmp; }
+    } else if (period === 'month') {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (period === 'last_month') {
+      start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    } else if (period === 'year') {
+      start = new Date(now.getFullYear(), 0, 1);
+    } else {
+      // "7d", "30d", "90d"
+      var days = parseInt(period, 10) || 30;
+      start = new Date(now);
+      start.setDate(start.getDate() - days + 1);
+      start.setHours(0, 0, 0, 0);
+    }
+
+    return { start: start.toISOString(), end: end.toISOString() };
+  }
+
+  function formatReportPeriodLabel(startIso, endIso) {
+    var s = new Date(startIso);
+    var e = new Date(endIso);
+    var fmt = d => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return 'Período: <strong>' + fmt(s) + '</strong> a <strong>' + fmt(e) + '</strong>';
+  }
+
+  async function loadReport() {
+    var range = getReportRange();
+    reportData.startIso = range.start;
+    reportData.endIso = range.end;
+
+    setLoading(true);
+    try {
+      var items = await window.fb.listInteractionsByPeriod(range.start, range.end);
+      reportData.interactions = items;
+      renderReport();
+      await loadSavedReportForPeriod(range.start, range.end);
+    } catch (e) {
+      console.error(e);
+      toast('Erro ao carregar relatório: ' + e.message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadSavedReportForPeriod(startIso, endIso) {
+    var contentEl = document.getElementById('aiReportContent');
+    var btnSave = document.getElementById('btnSaveReport');
+    var btnPdf = document.getElementById('btnExportReportPdf');
+
+    try {
+      var saved = await window.fb.getReportByPeriod(startIso, endIso);
+      if (saved && saved.content) {
+        reportData.savedReportId = saved.id;
+        reportData.aiContent = saved.content;
+        contentEl.innerHTML =
+          '<pre style="white-space: pre-wrap; font-family: inherit;">' +
+          escapeHtml(saved.content) + '</pre>';
+        btnSave.classList.add('hidden');
+        btnPdf.classList.remove('hidden');
+      } else {
+        reportData.savedReportId = null;
+        reportData.aiContent = null;
+        contentEl.innerHTML = '<p>Clique em "Gerar Análise com IA" para produzir o relatório deste período.</p>';
+        btnSave.classList.add('hidden');
+        btnPdf.classList.add('hidden');
+      }
+    } catch (e) {
+      console.warn('Falha ao carregar relatório salvo:', e);
+    }
+  }
+
+  function renderReport() {
+    var list = reportData.interactions;
+    document.getElementById('reportPeriodLabel').innerHTML =
+      formatReportPeriodLabel(reportData.startIso, reportData.endIso) +
+      ' · ' + list.length + ' interação' + (list.length === 1 ? '' : 'ões');
+
+    renderReportKpis(list);
+    renderReportDailyChart(list);
+    renderReportFunnel(list);
+    renderReportTopTemplates(list);
+    renderReportTopLeads(list);
+    renderReportTransitions(list);
+  }
+
+  function renderReportKpis(list) {
+    var total = list.length;
+
+    // Leads únicos tocados no período
+    var uniqueLeads = new Set();
+    list.forEach(i => { if (i.leadId) uniqueLeads.add(i.leadId); });
+    var leadsCount = uniqueLeads.size;
+
+    // Abordagens (interações cujo toStatus === 'abordagem')
+    var abordagens = list.filter(i => i.toStatus === 'abordagem').length;
+
+    // Follow-ups (follow1 + follow2)
+    var follow1 = list.filter(i => i.toStatus === 'follow1').length;
+    var follow2 = list.filter(i => i.toStatus === 'follow2').length;
+    var followTotal = follow1 + follow2;
+
+    // Conversões
+    var convertidos = list.filter(i => i.toStatus === 'convertido').length;
+
+    // Descartados
+    var descartados = list.filter(i => i.toStatus === 'descartado').length;
+
+    document.getElementById('reportKpis').innerHTML =
+      '<div class="metric-card"><div class="metric-value">' + total + '</div><div class="metric-label">Interações</div></div>' +
+      '<div class="metric-card"><div class="metric-value">' + leadsCount + '</div><div class="metric-label">Leads tocados</div></div>' +
+      '<div class="metric-card"><div class="metric-value">' + abordagens + '</div><div class="metric-label">Abordagens</div></div>' +
+      '<div class="metric-card warning"><div class="metric-value">' + followTotal + '</div><div class="metric-label">Follow-ups</div></div>' +
+      '<div class="metric-card success"><div class="metric-value">' + convertidos + '</div><div class="metric-label">Convertidos</div></div>' +
+      '<div class="metric-card danger"><div class="metric-value">' + descartados + '</div><div class="metric-label">Descartados</div></div>';
+  }
+
+  function renderReportDailyChart(list) {
+    var el = document.getElementById('reportDailyChart');
+    var start = new Date(reportData.startIso);
+    var end = new Date(reportData.endIso);
+
+    // Zera horários para agrupar por dia
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+
+    var days = [];
+    var cursor = new Date(start);
+    while (cursor <= end) {
+      days.push({
+        date: new Date(cursor),
+        count: 0,
+        key: cursor.toISOString().slice(0, 10)
+      });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    var byDay = {};
+    days.forEach(d => { byDay[d.key] = d; });
+
+    list.forEach(i => {
+      if (!i.timestamp) return;
+      var dk = new Date(i.timestamp).toISOString().slice(0, 10);
+      if (byDay[dk]) byDay[dk].count++;
+    });
+
+    var maxC = Math.max(1, ...days.map(d => d.count));
+
+    // Decide se esconde labels (mais de 14 dias → mostra só a cada N)
+    var hideEvery = days.length > 30 ? 5 : (days.length > 14 ? 2 : 0);
+
+    el.innerHTML = days.map((d, idx) => {
+      var pct = Math.round((d.count / maxC) * 100);
+      var label = d.date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+      var hideLabel = hideEvery > 0 && (idx % hideEvery !== 0) && idx !== days.length - 1;
+      var cls = 'bar-col' +
+        (d.count === 0 ? ' empty' : ' has-value') +
+        (hideLabel ? ' hide-label' : '');
+      return '<div class="' + cls + '" title="' + label + ': ' + d.count + '">' +
+        '<span class="bar-count">' + d.count + '</span>' +
+        '<div class="bar-fill" style="height:' + pct + '%"></div>' +
+        '<span class="bar-label">' + label + '</span>' +
+        '</div>';
+    }).join('');
+  }
+
+  function renderReportFunnel(list) {
+    var el = document.getElementById('reportFunnel');
+    var counts = {};
+    list.forEach(i => {
+      var st = i.toStatus || '';
+      if (!st) return;
+      counts[st] = (counts[st] || 0) + 1;
+    });
+
+    var stages = sortedStatuses().filter(s => counts[s.key] > 0);
+    if (!stages.length) {
+      el.innerHTML = '<p class="rank-empty">Nenhuma transição no período.</p>';
+      return;
+    }
+
+    var maxF = Math.max(1, ...stages.map(s => counts[s.key]));
+    el.innerHTML = stages.map(s => {
+      var c = counts[s.key];
+      var pct = Math.round((c / maxF) * 100);
+      return '<div class="funnel-item"><span class="funnel-label">' + escapeHtml(s.label) + '</span>' +
+        '<div class="funnel-bar-bg"><div class="funnel-bar" style="width:' + pct + '%"></div></div>' +
+        '<span class="funnel-count">' + c + '</span></div>';
+    }).join('');
+  }
+
+  function renderRankList(containerId, groups, emptyMsg) {
+    var el = document.getElementById(containerId);
+    if (!groups.length) {
+      el.innerHTML = '<p class="rank-empty">' + emptyMsg + '</p>';
+      return;
+    }
+
+    var maxV = Math.max(1, ...groups.map(g => g.value));
+    el.innerHTML = groups.map((g, i) => {
+      var pct = Math.round((g.value / maxV) * 100);
+      var topCls = i === 0 ? ' top-1' : (i === 1 ? ' top-2' : (i === 2 ? ' top-3' : ''));
+      return '<div class="rank-item' + topCls + '">' +
+        '<div class="rank-bar" style="width:' + pct + '%"></div>' +
+        '<span class="rank-pos">' + (i + 1) + '</span>' +
+        '<span class="rank-name" title="' + escapeAttr(g.label) + '">' + escapeHtml(g.label) + '</span>' +
+        '<span class="rank-value">' + g.value + '</span>' +
+        '</div>';
+    }).join('');
+  }
+
+  function groupBy(arr, keyFn, labelFn) {
+    var map = {};
+    arr.forEach(item => {
+      var k = keyFn(item);
+      if (!k) return;
+      if (!map[k]) map[k] = { key: k, label: labelFn(item, k), value: 0 };
+      map[k].value++;
+    });
+    return Object.values(map).sort((a, b) => b.value - a.value);
+  }
+
+  function renderReportTopTemplates(list) {
+    var onlyWithTemplate = list.filter(i => i.templateName);
+    var groups = groupBy(
+      onlyWithTemplate,
+      i => i.templateName,
+      i => i.templateName
+    ).slice(0, 10);
+    renderRankList('reportTopTemplates', groups, 'Nenhum template usado no período.');
+  }
+
+  function renderReportTopLeads(list) {
+    var groups = groupBy(
+      list,
+      i => i.leadId,
+      i => i.leadName || '(sem nome)'
+    ).slice(0, 10);
+    renderRankList('reportTopLeads', groups, 'Nenhum lead trabalhado no período.');
+  }
+
+  function renderReportTransitions(list) {
+    var groups = groupBy(
+      list.filter(i => i.fromStatus && i.toStatus),
+      i => i.fromStatus + '→' + i.toStatus,
+      i => statusLabel(i.fromStatus) + ' → ' + statusLabel(i.toStatus)
+    ).slice(0, 12);
+    renderRankList('reportTransitions', groups, 'Nenhuma transição no período.');
+  }
+
+  function exportReportCsv() {
+    var list = reportData.interactions;
+    if (!list.length) { toast('Sem dados no período', 'error'); return; }
+
+    var headers = ['timestamp', 'leadName', 'leadCategory', 'fromStatus', 'toStatus', 'templateName', 'message'];
+    var labels = ['Data/Hora', 'Lead', 'Nicho', 'De', 'Para', 'Template', 'Mensagem'];
+
+    var rows = list.map(i => headers.map(h => {
+      var v = i[h] == null ? '' : i[h];
+      if (h === 'timestamp') {
+        try { v = new Date(v).toLocaleString('pt-BR'); } catch (e) { }
+      }
+      v = String(v).replace(/"/g, '""');
+      if (v.indexOf(';') !== -1 || v.indexOf('"') !== -1 || v.indexOf('\n') !== -1) v = '"' + v + '"';
+      return v;
+    }).join(';'));
+
+    var csv = '\uFEFF' + labels.join(';') + '\n' + rows.join('\n');
+    var filename = 'relatorio_' + reportData.startIso.slice(0, 10) + '_a_' + reportData.endIso.slice(0, 10) + '.csv';
+    download(filename, csv, 'text/csv;charset=utf-8');
+    toast('Relatório exportado');
+  }
+
   /* =========================================================
      EVENTOS
      ========================================================= */
+
+  // Função para gerar o relatório
+  async function generateAIReport() {
+    const btn = document.getElementById('btnGenerateAIReport');
+    const contentEl = document.getElementById('aiReportContent');
+    const btnSave = document.getElementById('btnSaveReport');
+    const btnPdf = document.getElementById('btnExportReportPdf');
+
+    if (reportData.interactions.length === 0) {
+      toast('Não há dados no período para analisar.', 'error');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Analisando...';
+    contentEl.innerHTML = '<p>Processando dados com IA... Isso pode levar alguns segundos.</p>';
+    btnSave.classList.add('hidden');
+    btnPdf.classList.add('hidden');
+
+    try {
+      const reportText = await window.gemini.generateAnalyticalReport(reportData.interactions);
+      reportData.aiContent = reportText;
+      reportData.savedReportId = null;
+      contentEl.innerHTML =
+        '<pre style="white-space: pre-wrap; font-family: inherit;">' +
+        escapeHtml(reportText) + '</pre>';
+      btnSave.classList.remove('hidden');
+      btnPdf.classList.remove('hidden');
+      toast('Análise gerada. Salve para não perder.');
+    } catch (error) {
+      contentEl.innerHTML =
+        '<p style="color: var(--danger)">Erro ao gerar análise: ' + escapeHtml(error.message) + '</p>';
+      toast('Falha na análise de IA.', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '✨ Gerar Análise com IA';
+    }
+  }
+
+  /* =========================================================
+   RELATÓRIOS — persistência e exportação
+   ========================================================= */
+  async function saveAIReport() {
+    if (!reportData.aiContent) {
+      toast('Nada para salvar', 'error');
+      return;
+    }
+    if (reportData.savedReportId) {
+      toast('Relatório já está salvo', 'error');
+      return;
+    }
+
+    var btnSave = document.getElementById('btnSaveReport');
+    btnSave.disabled = true;
+
+    try {
+      var saved = await window.fb.saveReport({
+        startIso: reportData.startIso,
+        endIso: reportData.endIso,
+        content: reportData.aiContent,
+        interactionsCount: reportData.interactions.length,
+        generatedAt: new Date().toISOString()
+      });
+      reportData.savedReportId = saved.id;
+      btnSave.classList.add('hidden');
+      toast('Relatório salvo');
+    } catch (e) {
+      toast('Falha ao salvar: ' + e.message, 'error');
+      btnSave.disabled = false;
+    }
+  }
+
+  async function openSavedReportsModal() {
+    var modal = document.getElementById('savedReportsModal');
+    var el = document.getElementById('savedReportsList');
+    el.innerHTML = '<p class="empty-mini">Carregando...</p>';
+    modal.classList.remove('hidden');
+
+    try {
+      var list = await window.fb.listReports();
+      list.sort(function (a, b) {
+        var ta = a.generatedAt ? new Date(a.generatedAt).getTime() : 0;
+        var tb = b.generatedAt ? new Date(b.generatedAt).getTime() : 0;
+        return tb - ta;
+      });
+
+      if (!list.length) {
+        el.innerHTML = '<p class="empty-mini">Nenhum relatório salvo ainda.</p>';
+        return;
+      }
+
+      var fmt = function (iso) {
+        try {
+          return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        } catch (e) { return iso; }
+      };
+
+      el.innerHTML = list.map(function (r) {
+        var sizeInfo = (r.content || '').length + ' caracteres';
+        return '<div class="saved-report-item">' +
+          '<div class="saved-report-info">' +
+          '<div class="saved-report-period">' + fmt(r.startIso) + ' → ' + fmt(r.endIso) + '</div>' +
+          '<div class="saved-report-meta">' +
+          (r.interactionsCount || 0) + ' interações · ' + sizeInfo +
+          '</div>' +
+          '</div>' +
+          '<div class="saved-report-actions">' +
+          '<button class="btn btn-sm btn-outline" data-action="view-report" data-id="' + r.id + '">Ver</button>' +
+          '<button class="btn btn-sm btn-danger-outline" data-action="del-report" data-id="' + r.id + '">Excluir</button>' +
+          '</div>' +
+          '</div>';
+      }).join('');
+    } catch (e) {
+      el.innerHTML = '<p class="empty-mini" style="color:var(--danger)">Erro: ' + escapeHtml(e.message) + '</p>';
+    }
+  }
+
+  function closeSavedReportsModal() {
+    document.getElementById('savedReportsModal').classList.add('hidden');
+  }
+
+  /* Converte markdown simples em HTML limpo para impressão */
+  function markdownToHtml(md) {
+    if (!md) return '';
+    var lines = md.split('\n');
+    var html = [];
+    var inList = false;
+    var inTable = false;
+
+    function closeList() {
+      if (inList) { html.push('</ul>'); inList = false; }
+    }
+    function closeTable() {
+      if (inTable) { html.push('</tbody></table>'); inTable = false; }
+    }
+    function inline(text) {
+      return String(text)
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/__(.+?)__/g, '<strong>$1</strong>')
+        .replace(/([^*])\*([^*\n]+?)\*([^*]|$)/g, '$1<em>$2</em>$3')
+        .replace(/`([^`]+?)`/g, '<code>$1</code>')
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1');
+    }
+
+    for (var i = 0; i < lines.length; i++) {
+      var raw = lines[i];
+      var trimmed = raw.trim();
+
+      // Tabela markdown
+      if (/^\|.+\|$/.test(trimmed)) {
+        var cells = trimmed.split('|').slice(1, -1).map(function (c) { return c.trim(); });
+        if (cells.every(function (c) { return /^:?-+:?$/.test(c); })) continue;
+        if (!inTable) {
+          closeList();
+          html.push('<table><thead><tr>');
+          html.push(cells.map(function (c) { return '<th>' + inline(c) + '</th>'; }).join(''));
+          html.push('</tr></thead><tbody>');
+          inTable = true;
+        } else {
+          html.push('<tr>' + cells.map(function (c) { return '<td>' + inline(c) + '</td>'; }).join('') + '</tr>');
+        }
+        continue;
+      } else {
+        closeTable();
+      }
+
+      // Cabeçalhos
+      var hMatch = trimmed.match(/^(#{1,6})\s+(.+?)\s*#*$/);
+      if (hMatch) {
+        closeList();
+        var level = hMatch[1].length;
+        var title = hMatch[2].replace(/^#+\s*/, '').trim();
+        html.push('<h' + level + '>' + inline(title) + '</h' + level + '>');
+        continue;
+      }
+
+      // Separador horizontal
+      if (/^[-*_]{3,}$/.test(trimmed)) {
+        closeList();
+        html.push('<hr>');
+        continue;
+      }
+
+      // Lista com bullets
+      var listMatch = trimmed.match(/^[\-\*\+]\s+(.+)$/);
+      if (listMatch) {
+        if (!inList) { html.push('<ul>'); inList = true; }
+        html.push('<li>' + inline(listMatch[1]) + '</li>');
+        continue;
+      }
+
+      // Lista numerada
+      var numMatch = trimmed.match(/^(\d+)\.\s+(.+)$/);
+      if (numMatch) {
+        closeList();
+        html.push('<p class="md-num"><strong>' + numMatch[1] + '.</strong> ' + inline(numMatch[2]) + '</p>');
+        continue;
+      }
+
+      // Linha em branco
+      if (!trimmed) { closeList(); continue; }
+
+      // Parágrafo comum
+      closeList();
+      html.push('<p>' + inline(trimmed) + '</p>');
+    }
+
+    closeList();
+    closeTable();
+    return html.join('\n');
+  }
+
+  async function exportReportToPdf() {
+    if (!reportData.aiContent) {
+      toast('Nada para exportar', 'error');
+      return;
+    }
+
+    var printRoot = document.createElement('div');
+    printRoot.id = 'printRoot';
+
+    var startFmt = new Date(reportData.startIso).toLocaleDateString('pt-BR');
+    var endFmt = new Date(reportData.endIso).toLocaleDateString('pt-BR');
+    var today = new Date().toLocaleString('pt-BR');
+    var bodyHtml = markdownToHtml(reportData.aiContent);
+
+    printRoot.innerHTML =
+      '<div class="print-header">' +
+      '<div class="print-brand">Leads Manager</div>' +
+      '<h1>Relatório Analítico de Prospecção</h1>' +
+      '<div class="print-meta">' +
+      '<span><strong>Período:</strong> ' + startFmt + ' — ' + endFmt + '</span>' +
+      '<span><strong>Interações:</strong> ' + reportData.interactions.length + '</span>' +
+      '<span><strong>Gerado em:</strong> ' + today + '</span>' +
+      '</div>' +
+      '</div>' +
+      '<div class="print-body">' + bodyHtml + '</div>' +
+      '<div class="print-footer">' +
+      'Documento gerado automaticamente pelo Leads Manager · Análise por IA' +
+      '</div>';
+
+    document.body.appendChild(printRoot);
+    document.body.classList.add('printing');
+
+    setTimeout(function () {
+      window.print();
+      setTimeout(function () {
+        document.body.classList.remove('printing');
+        printRoot.remove();
+      }, 500);
+    }, 100);
+  }
+
   function bindEvents() {
     var btnHamburger = document.getElementById('btnHamburger');
     if (btnHamburger) {
@@ -1312,6 +1960,35 @@
     });
 
     document.getElementById('btnLogout').addEventListener('click', logout);
+
+    // Relatórios
+    var rp = document.getElementById('reportPeriod');
+    if (rp) {
+      rp.addEventListener('change', function () {
+        var custom = document.getElementById('reportCustomRange');
+        if (rp.value === 'custom') {
+          custom.classList.remove('hidden');
+          // pré-preenche com o range atual
+          var now = new Date();
+          var past = new Date(); past.setDate(past.getDate() - 30);
+          if (!document.getElementById('reportStart').value)
+            document.getElementById('reportStart').value = past.toISOString().slice(0, 10);
+          if (!document.getElementById('reportEnd').value)
+            document.getElementById('reportEnd').value = now.toISOString().slice(0, 10);
+        } else {
+          custom.classList.add('hidden');
+          loadReport();
+        }
+      });
+    }
+    var btnApplyRange = document.getElementById('btnApplyCustomRange');
+    if (btnApplyRange) btnApplyRange.addEventListener('click', loadReport);
+
+    var btnRefreshReport = document.getElementById('btnRefreshReport');
+    if (btnRefreshReport) btnRefreshReport.addEventListener('click', loadReport);
+
+    var btnExportReport = document.getElementById('btnExportReportCsv');
+    if (btnExportReport) btnExportReport.addEventListener('click', exportReportCsv);
 
     document.querySelectorAll('th.sortable').forEach(th => {
       th.style.cursor = 'pointer';
@@ -1357,6 +2034,7 @@
       }
       if (btn.dataset.action === 'whatsapp') openWaModal(id);
       if (btn.dataset.action === 'snooze') snoozeLead(id, parseInt(settings.snoozeDays, 10) || 3);
+      if (btn.dataset.action === 'history') openHistoryModal(id);
     });
 
     document.getElementById('btnBulkDelete').addEventListener('click', () => {
@@ -1364,6 +2042,9 @@
       if (settings.confirmDelete && !confirm('Excluir ' + selectedIds.size + ' lead(s)?')) return;
       deleteLeadsRemote(Array.from(selectedIds)).then(() => { renderTable(); renderDashboard(); });
     });
+
+    document.getElementById('historyModalClose').addEventListener('click', closeHistoryModal);
+    document.getElementById('historyModalCloseBtn').addEventListener('click', closeHistoryModal);
 
     document.getElementById('btnBulkStatus').addEventListener('click', async () => {
       if (!selectedIds.size) return;
@@ -1376,8 +2057,10 @@
       try {
         for (var i = 0; i < leads.length; i++) {
           if (selectedIds.has(leads[i].id)) {
+            var oldSt = leads[i].status || 'novo';
             leads[i].status = s;
             await window.fb.updateLead(leads[i].id, { status: s });
+            await recordInteraction(leads[i], oldSt, s, '', '', '');
           }
         }
         toast('Status atualizado');
@@ -1392,8 +2075,60 @@
 
     document.getElementById('btnRefreshData').addEventListener('click', loadAll);
     document.getElementById('btnRefreshLeads').addEventListener('click', loadAll);
-    var btnR2 = document.getElementById('btnRefreshData2');
-    if (btnR2) btnR2.addEventListener('click', loadAll);
+
+    document.getElementById('btnGenerateAIReport').addEventListener('click', generateAIReport);
+
+    var btnSave = document.getElementById('btnSaveReport');
+    if (btnSave) btnSave.addEventListener('click', saveAIReport);
+
+    var btnPdf = document.getElementById('btnExportReportPdf');
+    if (btnPdf) btnPdf.addEventListener('click', exportReportToPdf);
+
+    var btnSaved = document.getElementById('btnSavedReports');
+    if (btnSaved) btnSaved.addEventListener('click', openSavedReportsModal);
+
+    var srClose = document.getElementById('savedReportsClose');
+    if (srClose) srClose.addEventListener('click', closeSavedReportsModal);
+    var srCloseBtn = document.getElementById('savedReportsCloseBtn');
+    if (srCloseBtn) srCloseBtn.addEventListener('click', closeSavedReportsModal);
+
+    var srList = document.getElementById('savedReportsList');
+    if (srList) {
+      srList.addEventListener('click', async function (e) {
+        var btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        var id = btn.dataset.id;
+
+        if (btn.dataset.action === 'view-report') {
+          try {
+            var rep = await window.fb.listReports().then(function (all) {
+              return all.find(function (r) { return r.id === id; });
+            });
+            if (!rep) { toast('Relatório não encontrado', 'error'); return; }
+            document.getElementById('reportPeriod').value = 'custom';
+            document.getElementById('reportCustomRange').classList.remove('hidden');
+            document.getElementById('reportStart').value = rep.startIso.slice(0, 10);
+            document.getElementById('reportEnd').value = rep.endIso.slice(0, 10);
+            closeSavedReportsModal();
+            showView('reports');
+            await loadReport();
+            toast('Relatório carregado');
+          } catch (err) {
+            console.error(err);
+            toast('Erro ao abrir relatório: ' + err.message, 'error');
+          }
+        }
+
+        if (btn.dataset.action === 'del-report') {
+          if (!confirm('Excluir este relatório salvo?')) return;
+          try {
+            await window.fb.deleteReport(id);
+            toast('Relatório excluído');
+            openSavedReportsModal();
+          } catch (err) { toast(err.message, 'error'); }
+        }
+      });
+    }
 
     document.getElementById('leadForm').addEventListener('submit', async function (e) {
       e.preventDefault();
@@ -1507,6 +2242,8 @@
       var id = document.getElementById('editId').value;
       var existing = leads.find(l => l.id === id) || {};
       var nextVal = document.getElementById('eNextContact').value;
+
+      // 1) Monta o lead ATUALIZADO primeiro
       var lead = Object.assign({}, existing, {
         id: id,
         name: document.getElementById('eName').value.trim(),
@@ -1523,6 +2260,15 @@
         notes: document.getElementById('eNotes').value.trim(),
         nextContactAt: nextVal ? new Date(nextVal + 'T12:00:00').toISOString() : null
       });
+
+      // 2) Agora sim, com `lead` já montado, compara e registra
+      var oldStatus = existing.status || 'novo';
+      var newStatus = lead.status || 'novo';
+      if (oldStatus !== newStatus) {
+        await recordInteraction(lead, oldStatus, newStatus, '', '', '');
+      }
+
+      // 3) Persiste
       if (await updateLeadRemote(lead)) {
         document.getElementById('editModal').classList.add('hidden');
         renderTable();
@@ -1661,6 +2407,8 @@
         toast('Status salvo');
       } catch (err) { toast(err.message, 'error'); }
     });
+
+
   }
 
   /* =========================================================
