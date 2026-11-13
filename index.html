@@ -89,6 +89,7 @@
         <button class="nav-item" data-view="add"><span class="nav-icon">➕</span><span>Adicionar</span></button>
         <button class="nav-item" data-view="templates"><span class="nav-icon">💬</span><span>Templates</span></button>
         <button class="nav-item" data-view="reports"><span class="nav-icon">📈</span><span>Relatórios</span></button>
+        <button class="nav-item" data-view="finance"><span class="nav-icon">💰</span><span>Financeiro</span></button>
         <button class="nav-item" data-view="statuses"><span class="nav-icon">🏷️</span><span>Status</span></button>
         <button class="nav-item" data-view="import"><span class="nav-icon">📥</span><span>Importar</span></button>
         <button class="nav-item" data-view="export"><span class="nav-icon">📤</span><span>Exportar</span></button>
@@ -360,6 +361,56 @@
             <p>Clique no botão acima para gerar uma análise detalhada do período selecionado.</p>
           </div>
         </div>
+      </section>
+
+      <section id="view-finance" class="view">
+        <header class="view-header">
+          <div>
+            <h2>Financeiro</h2>
+            <p class="subtitle">Gestão de projetos, recebíveis e faturamento</p>
+          </div>
+          <button id="btnNewProject" class="btn btn-primary">+ Novo Projeto Manual</button>
+          <button id="btnNewExpense" class="btn btn-outline">+ Nova Despesa</button>
+        </header>
+
+        <div class="metrics-grid" id="financeKpis"></div>
+
+        <div class="table-wrapper" style="margin-top: 20px">
+          <table class="leads-table">
+            <thead>
+              <tr>
+                <th>Cliente / Projeto</th>
+                <th>Valor Total</th>
+                <th>Status Pagto</th>
+                <th>Status Projeto</th>
+                <th>Data Início</th>
+                <th class="col-actions">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="projectsBody"></tbody>
+          </table>
+          <div id="emptyFinance" class="empty-state" style="display:none;">
+            <div class="empty-icon">💸</div>
+            <h3>Nenhum projeto financeiro</h3>
+            <p>Converta um lead para criar um projeto ou adicione manualmente.</p>
+          </div>
+        </div>
+
+                <h3 style="margin-top: 30px; margin-bottom: 10px; color: var(--brand-navy); font-size: 16px;">Despesas Recentes</h3>
+                <div class="table-wrapper">
+                  <table class="leads-table">
+                    <thead>
+                      <tr>
+                        <th>Data</th>
+                        <th>Descrição</th>
+                        <th>Categoria</th>
+                        <th>Valor</th>
+                        <th class="col-actions">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody id="expensesBody"></tbody>
+                  </table>
+                </div>
       </section>
 
       <section id="view-import" class="view">
@@ -652,6 +703,102 @@
       <div class="form-actions">
         <button type="button" class="btn btn-outline" id="savedReportsCloseBtn">Fechar</button>
       </div>
+    </div>
+  </div>
+
+  <div id="projectModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <header class="modal-header">
+        <h3 id="projectModalTitle">Novo Projeto Financeiro</h3>
+        <button class="modal-close" id="projectModalClose">&times;</button>
+      </header>
+      <form id="projectForm">
+        <input type="hidden" id="pId">
+        <input type="hidden" id="pLeadId">
+
+        <div class="form-grid">
+          <div class="form-group"><label for="pClientName">Nome do Cliente *</label><input type="text" id="pClientName"
+              required></div>
+          <div class="form-group"><label for="pCpfCnpj">CPF / CNPJ</label><input type="text" id="pCpfCnpj"
+              placeholder="000.000.000-00"></div>
+          <div class="form-group full"><label for="pClientAddress">Endereço Completo</label><input type="text"
+              id="pClientAddress"></div>
+          <div class="form-group"><label for="pClientPhone">Telefone</label><input type="text" id="pClientPhone"></div>
+          <div class="form-group"><label for="pClientEmail">E-mail</label><input type="email" id="pClientEmail"></div>
+          <div class="form-group"><label for="pType">Tipo de Projeto</label>
+            <select id="pType">
+              <option value="Landing Page">Landing Page</option>
+              <option value="Site Institucional">Site Institucional</option>
+              <option value="Site com Sistema">Site com Sistema</option>
+              <option value="Manutenção">Manutenção</option>
+            </select>
+          </div>
+          <div class="form-group"><label for="pTotalValue">Valor Total (R$) *</label><input type="number"
+              id="pTotalValue" step="0.01" required></div>
+          <div class="form-group"><label for="pInstallments">Parcelas</label>
+            <select id="pInstallments">
+              <option value="1">À vista</option>
+              <option value="2">2x</option>
+              <option value="3">3x</option>
+              <option value="6">6x</option>
+              <option value="12">12x</option>
+            </select>
+          </div>
+          <div class="form-group"><label for="pProjectStatus">Status do Projeto</label>
+            <select id="pProjectStatus">
+              <option value="Aguardando Pagamento">Aguardando Pagamento</option>
+              <option value="Em Desenvolvimento">Em Desenvolvimento</option>
+              <option value="Em Revisão">Em Revisão</option>
+              <option value="Concluído">Concluído</option>
+            </select>
+          </div>
+          <div class="form-group"><label for="pPaymentStatus">Status Financeiro</label>
+            <select id="pPaymentStatus">
+              <option value="Pendente">Pendente</option>
+              <option value="Pago Parcial">Pago Parcial</option>
+              <option value="Pago Total">Pago Total</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Salvar Projeto</button>
+          <button type="button" class="btn btn-outline" id="projectModalCancel">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="expenseModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <header class="modal-header">
+        <h3>Lançar Despesa</h3>
+        <button class="modal-close" id="expenseModalClose">&times;</button>
+      </header>
+      <form id="expenseForm">
+        <div class="form-grid">
+          <div class="form-group full"><label for="exDesc">Descrição *</label><input type="text" id="exDesc" required
+              placeholder="Ex: Hospedagem Site Cliente X"></div>
+          <div class="form-group"><label for="exAmount">Valor (R$) *</label><input type="number" id="exAmount" step="0.01"
+              required></div>
+          <div class="form-group"><label for="exDate">Data *</label><input type="date" id="exDate" required></div>
+          <div class="form-group full"><label for="exCategory">Categoria</label>
+            <select id="exCategory">
+              <option value="Hospedagem/Domínio">Hospedagem / Domínio</option>
+              <option value="Ferramentas/Software">Ferramentas / Software</option>
+              <option value="Marketing/Anúncios">Marketing / Anúncios</option>
+              <option value="Impostos/Taxas">Impostos / Taxas</option>
+              <option value="Outros">Outros</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Salvar Despesa</button>
+          <button type="button" class="btn btn-outline" id="expenseModalCancel">Cancelar</button>
+        </div>
+      </form>
     </div>
   </div>
 

@@ -104,6 +104,8 @@
   let leads = [];
   let templates = [];
   let statuses = [];
+  let projects = [];
+  let expenses = [];
   let settings = {
     followUpDays: 3,
     backlogMonths: 180,
@@ -285,6 +287,131 @@
       return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
     } catch (e) { return '—'; }
   }
+
+
+  function valorPorExtenso(valor) {
+    const unidades = [
+      "", "um", "dois", "três", "quatro", "cinco",
+      "seis", "sete", "oito", "nove"
+    ];
+
+    const especiais = [
+      "dez", "onze", "doze", "treze", "quatorze",
+      "quinze", "dezesseis", "dezessete", "dezoito", "dezenove"
+    ];
+
+    const dezenas = [
+      "", "", "vinte", "trinta", "quarenta", "cinquenta",
+      "sessenta", "setenta", "oitenta", "noventa"
+    ];
+
+    const centenas = [
+      "", "cento", "duzentos", "trezentos", "quatrocentos",
+      "quinhentos", "seiscentos", "setecentos",
+      "oitocentos", "novecentos"
+    ];
+
+    function numeroPorExtenso(numero) {
+      if (numero === 0) return "zero";
+      if (numero === 100) return "cem";
+
+      if (numero < 10) return unidades[numero];
+
+      if (numero < 20) return especiais[numero - 10];
+
+      if (numero < 100) {
+        const dezena = Math.floor(numero / 10);
+        const unidade = numero % 10;
+
+        return dezenas[dezena] +
+          (unidade ? " e " + unidades[unidade] : "");
+      }
+
+      if (numero < 1000) {
+        const centena = Math.floor(numero / 100);
+        const resto = numero % 100;
+
+        return centenas[centena] +
+          (resto ? " e " + numeroPorExtenso(resto) : "");
+      }
+
+      const escalas = [
+        { valor: 1000000000, singular: "bilhão", plural: "bilhões" },
+        { valor: 1000000, singular: "milhão", plural: "milhões" },
+        { valor: 1000, singular: "mil", plural: "mil" }
+      ];
+
+      for (const escala of escalas) {
+        if (numero >= escala.valor) {
+          const quantidade = Math.floor(numero / escala.valor);
+          const resto = numero % escala.valor;
+
+          let texto;
+
+          if (escala.valor === 1000) {
+            texto = quantidade === 1
+              ? "mil"
+              : numeroPorExtenso(quantidade) + " mil";
+          } else {
+            texto = numeroPorExtenso(quantidade) + " " +
+              (quantidade === 1
+                ? escala.singular
+                : escala.plural);
+          }
+
+          if (resto > 0) {
+            texto += (resto < 100 || resto % 100 === 0)
+              ? " e "
+              : ", ";
+
+            texto += numeroPorExtenso(resto);
+          }
+
+          return texto;
+        }
+      }
+    }
+
+    // Aceita número ou string no formato brasileiro
+    if (typeof valor === "string") {
+      valor = valor.replace(/[R$\s]/g, "");
+
+      if (valor.includes(",")) {
+        valor = valor.replace(/\./g, "").replace(",", ".");
+      }
+    }
+
+    const numero = Number(valor);
+
+    if (!Number.isFinite(numero) || numero < 0 ||
+      numero > 999999999999.99) {
+      throw new Error("Valor monetário inválido.");
+    }
+
+    const valorEmCentavos = Math.round(
+      (numero + Number.EPSILON) * 100
+    );
+
+    const reais = Math.floor(valorEmCentavos / 100);
+    const centavos = valorEmCentavos % 100;
+
+    let resultado = "";
+
+    if (reais > 0) {
+      resultado = numeroPorExtenso(reais) +
+        (reais === 1 ? " real" : " reais");
+    }
+
+    if (centavos > 0) {
+      if (resultado) resultado += " e ";
+
+      resultado += numeroPorExtenso(centavos) +
+        (centavos === 1 ? " centavo" : " centavos");
+    }
+
+    return resultado || "zero real";
+  }
+
 
   function addMonths(date, months) {
     var d = new Date(date);
@@ -487,10 +614,12 @@
   async function loadAll() {
     setLoading(true);
     try {
-      const [l, t, s] = await Promise.all([
-        window.fb.listLeads(),
-        window.fb.listTemplates(),
-        window.fb.listStatuses()
+      const [l, t, s, prj, exp] = await Promise.all([
+        window.fb.listLeads().catch(e => { console.error('Erro ao carregar leads:', e); return []; }),
+        window.fb.listTemplates().catch(e => { console.error('Erro ao carregar templates:', e); return []; }),
+        window.fb.listStatuses().catch(e => { console.error('Erro ao carregar status:', e); return []; }),
+        window.fb.listProjects().catch(e => { console.error('Erro ao carregar projetos:', e); return []; }),
+        window.fb.listExpenses().catch(e => { console.error('Erro ao carregar despesas:', e); return []; }),
       ]);
 
       leads = l.map(x => {
@@ -502,7 +631,10 @@
       });
       templates = t;
       statuses = s;
+      projects = prj;
+      expenses = exp;
 
+      renderFinance();
       updateCounts();
       populateNicheFilter();
       populateStatusSelects();
@@ -534,6 +666,7 @@
     if (name === 'templates') renderTemplates();
     if (name === 'statuses') renderStatuses();
     if (name === 'reports' && !(opts && opts.skipReportLoad)) loadReport();
+    if (name === 'finance') renderFinance();
   }
 
   function updateCounts() {
@@ -1226,6 +1359,15 @@
     closeWaModal();
     renderTable();
     renderDashboard();
+
+    if (lead.status === 'convertido') {
+      setTimeout(() => {
+        if (confirm('🎉 Lead convertido! Deseja gerar o projeto financeiro e o contrato agora?')) {
+          showView('finance');
+          openProjectModal(null, lead);
+        }
+      }, 500);
+    }
   }
 
   /* =========================================================
@@ -1703,6 +1845,294 @@
   }
 
   /* =========================================================
+   MÓDULO FINANCEIRO
+   ========================================================= */
+  function renderFinance() {
+    // KPIs
+    var totalContratos = projects.reduce((acc, p) => acc + parseFloat(p.totalValue || 0), 0);
+    var recebido = projects.filter(p => p.paymentStatus === 'Pago Total').reduce((acc, p) => acc + parseFloat(p.totalValue || 0), 0);
+    var aReceber = totalContratos - recebido;
+
+    // ⬇️ NOVOS KPIs
+    var totalDespesas = expenses.reduce((acc, e) => acc + parseFloat(e.amount || 0), 0);
+    var lucroLiquido = recebido - totalDespesas;
+
+    document.getElementById('financeKpis').innerHTML =
+      '<div class="metric-card"><div class="metric-value">R$ ' + totalContratos.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '</div><div class="metric-label">Em Contratos</div></div>' +
+      '<div class="metric-card success"><div class="metric-value">R$ ' + recebido.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '</div><div class="metric-label">Recebido</div></div>' +
+      '<div class="metric-card warning"><div class="metric-value">R$ ' + aReceber.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '</div><div class="metric-label">A Receber</div></div>' +
+      '<div class="metric-card danger"><div class="metric-value">R$ ' + totalDespesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '</div><div class="metric-label">Despesas</div></div>' +
+      '<div class="metric-card" style="border-top-color: #3b82f6;"><div class="metric-value" style="color: #3b82f6;">R$ ' + lucroLiquido.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '</div><div class="metric-label">Lucro Líquido</div></div>';
+
+    // Tabela de Projetos
+    var tbody = document.getElementById('projectsBody');
+    var empty = document.getElementById('emptyFinance');
+
+    if (!projects.length) {
+      tbody.innerHTML = '';
+      empty.style.display = 'flex';
+    } else {
+      empty.style.display = 'none';
+      tbody.innerHTML = projects.map(p => {
+        var statusBadge = p.paymentStatus === 'Pago Total' ? 'status-convertido' : (p.paymentStatus === 'Pago Parcial' ? 'status-proposta' : 'status-backlog');
+        return '<tr>' +
+          '<td><div class="lead-name">' + escapeHtml(p.clientName) + '<small>' + escapeHtml(p.type) + '</small></div></td>' +
+          '<td>R$ ' + parseFloat(p.totalValue).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '</td>' +
+          '<td><span class="status-badge ' + statusBadge + '">' + escapeHtml(p.paymentStatus) + '</span></td>' +
+          '<td>' + escapeHtml(p.projectStatus) + '</td>' +
+          '<td>' + formatDate(p.createdAt ? new Date(p.createdAt.seconds * 1000).toISOString() : new Date().toISOString()) + '</td>' +
+          '<td class="col-actions">' +
+          '<button type="button" class="btn-icon" title="Gerar Contrato" data-action="pdf-contract" data-id="' + p.id + '">📄</button>' +
+          '<button type="button" class="btn-icon" title="Gerar Recibo" data-action="pdf-receipt" data-id="' + p.id + '">🧾</button>' +
+          '<button type="button" class="btn-icon" title="Editar" data-action="edit-project" data-id="' + p.id + '">✏️</button>' +
+          '<button type="button" class="btn-icon danger" title="Excluir" data-action="del-project" data-id="' + p.id + '">🗑️</button>' +
+          '</td></tr>';
+      }).join('');
+    }
+
+    // Tabela de Despesas
+    var expBody = document.getElementById('expensesBody');
+    if (expenses.length) {
+      expBody.innerHTML = expenses.map(e => {
+        return '<tr>' +
+          '<td>' + formatDate(e.date) + '</td>' +
+          '<td>' + escapeHtml(e.description) + '</td>' +
+          '<td>' + escapeHtml(e.category) + '</td>' +
+          '<td style="color: var(--danger);">- R$ ' + parseFloat(e.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + '</td>' +
+          '<td class="col-actions">' +
+          '<button type="button" class="btn-icon danger" title="Excluir" data-action="del-expense" data-id="' + e.id + '">🗑️</button>' +
+          '</td></tr>';
+      }).join('');
+    } else {
+      expBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">Nenhuma despesa lançada.</td></tr>';
+    }
+  }
+
+  function openProjectModal(projectId, lead) {
+    var p = projectId ? projects.find(x => x.id === projectId) : null;
+
+    document.getElementById('projectModalTitle').textContent = p ? 'Editar Projeto' : 'Novo Projeto';
+    document.getElementById('pId').value = p ? p.id : '';
+    document.getElementById('pLeadId').value = p ? p.leadId : (lead ? lead.id : '');
+    document.getElementById('pClientName').value = p ? p.clientName : (lead ? lead.name : '');
+    document.getElementById('pCpfCnpj').value = p ? (p.cpfCnpj || '') : '';
+    document.getElementById('pClientAddress').value = p ? (p.clientAddress || '') : (lead ? lead.address : '');
+    document.getElementById('pClientPhone').value = p ? (p.clientPhone || '') : (lead ? lead.phone : '');
+    document.getElementById('pClientEmail').value = p ? (p.clientEmail || '') : (lead ? lead.email : '');
+    document.getElementById('pType').value = p ? p.type : 'Site Institucional';
+    document.getElementById('pTotalValue').value = p ? p.totalValue : '';
+    document.getElementById('pInstallments').value = p ? p.installments : '1';
+    document.getElementById('pProjectStatus').value = p ? p.projectStatus : 'Aguardando Pagamento';
+    document.getElementById('pPaymentStatus').value = p ? p.paymentStatus : 'Pendente';
+
+    document.getElementById('projectModal').classList.remove('hidden');
+  }
+
+  function closeProjectModal() {
+    document.getElementById('projectModal').classList.add('hidden');
+  }
+
+  function openExpenseModal() {
+    document.getElementById('exDesc').value = '';
+    document.getElementById('exAmount').value = '';
+    document.getElementById('exDate').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('exCategory').value = 'Hospedagem/Domínio';
+    document.getElementById('expenseModal').classList.remove('hidden');
+  }
+
+  function closeExpenseModal() {
+    document.getElementById('expenseModal').classList.add('hidden');
+  }
+
+  /* =========================================================
+     GERADOR DE DOCUMENTOS (CONTRATO E RECIBO)
+     ========================================================= */
+  function printDocument(title, htmlBody) {
+    var printRoot = document.getElementById('printRoot');
+    if (!printRoot) {
+      printRoot = document.createElement('div');
+      printRoot.id = 'printRoot';
+      document.body.appendChild(printRoot);
+    }
+
+    printRoot.innerHTML =
+      '<div class="print-header-doc">' +
+      '<img src="assets/img/logo.svg" class="doc-logo" alt="Natal de Lima">' +
+      '<div class="doc-brand">Natal de Lima<br><small>Desenvolvimento Web</small></div>' +
+      '</div>' +
+      '<div class="print-body-doc">' + htmlBody + '</div>' +
+      '<div class="print-footer-doc">Desenvolvido por Natal Lima - Desenvolvimento Web Profissional</div>';
+
+    document.body.classList.add('printing');
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => { document.body.classList.remove('printing'); printRoot.innerHTML = ''; }, 500);
+    }, 100);
+  }
+
+  function generateContractPdf(id) {
+    var p = projects.find(x => x.id === id);
+    if (!p) return;
+
+    var today = new Date().toLocaleDateString('pt-BR');
+    var valFormat = parseFloat(p.totalValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+
+    var html = `
+      <h1 class="doc-title">CONTRATO DE PRESTAÇÃO DE SERVIÇOS</h1>
+      <h2 class="doc-subtitle">DESENVOLVIMENTO DE WEBSITE</h2>
+      <p><strong>Contrato nº:</strong> PRJ-${p.id.slice(-5).toUpperCase()} | <strong>Data:</strong> ${today}</p>
+
+      <h3>PARTES CONTRATANTES</h3>
+      <div class="doc-box">
+        <p><strong>CONTRATANTE:</strong> ${escapeHtml(p.clientName)}</p>
+        <p><strong>CPF/CNPJ:</strong> ${escapeHtml(p.cpfCnpj || '_______________________')}</p>
+        <p><strong>Endereço:</strong> ${escapeHtml(p.clientAddress || '_________________________________________________')}</p>
+        <p><strong>Telefone:</strong> ${escapeHtml(p.clientPhone || '____________________')} | <strong>E-mail:</strong> ${escapeHtml(p.clientEmail || '____________________')}</p>
+      </div>
+      <div class="doc-box">
+        <p><strong>CONTRATADO:</strong> NATAL SILVA DE LIMA</p>
+        <p><strong>CPF:</strong> 902.579.101-82</p>
+        <p><strong>Endereço:</strong> Rua Mauro Rodrigues de Oliveira, 137 - Jd Parati, CEP 79081-510, Campo Grande/MS</p>
+        <p><strong>E-mail:</strong> nataldelima@gmail.com | <strong>Telefone:</strong> (67) 99160-9897</p>
+      </div>
+
+      <h3>CLÁUSULA 1 - OBJETO DO CONTRATO</h3>
+      <p>O CONTRATADO se compromete a desenvolver e entregar ao CONTRATANTE um website do tipo <strong>${escapeHtml(p.type)}</strong>, conforme especificações acordadas previamente.</p>
+
+      <h3>CLÁUSULA 2 - RESPONSABILIDADES DO CONTRATADO</h3>
+      <p>2.1. Desenvolver o website conforme briefing e especificações acordadas;<br>
+      2.2. Criar design responsivo (adaptável a dispositivos móveis);<br>
+      2.3. Garantir boas práticas de desenvolvimento e otimização básica para mecanismos de busca (SEO);<br>
+      2.4. Realizar até 2 (duas) rodadas de revisões sem custo adicional;<br>
+      2.5. Entregar o projeto no prazo estabelecido;<br>
+      2.6. Prestar suporte técnico gratuito por 30 (trinta) dias após a entrega final.</p>
+
+      <h3>CLÁUSULA 3 - RESPONSABILIDADES DO CONTRATANTE</h3>
+      <p>3.1. Fornecer todo o conteúdo necessário (textos, imagens, logotipo, informações) em até 5 (cinco) dias úteis após assinatura do contrato;<br>
+      3.2. Responder às solicitações do CONTRATADO em até 48 (quarenta e oito) horas;<br>
+      3.3. Aprovar ou solicitar ajustes nas etapas de revisão em até 3 (três) dias úteis;<br>
+      3.4. Efetuar os pagamentos conforme estabelecido na Cláusula 5.</p>
+      <p><em>IMPORTANTE: Atrasos no fornecimento de materiais ou aprovações pelo CONTRATANTE resultarão em prorrogação proporcional do prazo de entrega.</em></p>
+
+      <h3>CLÁUSULA 4 - PRAZO DE ENTREGA</h3>
+      <p>O prazo para conclusão e entrega do projeto é de 15 a 30 dias úteis, contados a partir do recebimento de todos os materiais necessários e da confirmação do pagamento inicial.</p>
+
+      <h3>CLÁUSULA 5 - VALOR E FORMA DE PAGAMENTO</h3>
+      <p>O valor total do serviço contratado é de <strong>R$ ${valFormat}</strong>.<br>
+      Forma de pagamento: <strong>${p.installments === '1' ? 'À vista' : 'Parcelado em ' + p.installments + 'x'}</strong>.<br>
+      Dados para pagamento: PIX (nataldelima@gmail.com)</p>
+
+      <h3>CLÁUSULA 6 - REVISÕES E ALTERAÇÕES</h3>
+      <p>6.1. Estão incluídas no valor 2 (duas) rodadas de revisões sem custo adicional.<br>
+      6.2. Considera-se "revisão": ajustes de cores, textos, disposição de elementos, troca de imagens.<br>
+      6.3. Não são consideradas revisões: mudança completa de layout, adição de novas páginas/funcionalidades, alteração de escopo.<br>
+      6.4. Alterações fora do escopo acordado serão orçadas separadamente.</p>
+
+      <h3>CLÁUSULA 7 - PROPRIEDADE INTELECTUAL</h3>
+      <p>7.1. Após o pagamento integral, todos os direitos sobre o design e código desenvolvido são transferidos ao CONTRATANTE.<br>
+      7.2. O CONTRATADO poderá utilizar o projeto em seu portfólio profissional, salvo acordo em contrário.<br>
+      7.3. O CONTRATANTE é responsável pela originalidade e legalidade dos conteúdos fornecidos.</p>
+
+      <h3>CLÁUSULA 8 - HOSPEDAGEM E DOMÍNIO</h3>
+      <p>8.1. A hospedagem está inclusa por 12 (doze) meses a partir da entrega (quando acordada na proposta).<br>
+      8.2. Após esse período, a renovação será de responsabilidade do CONTRATANTE.<br>
+      8.3. O registro de domínio (.com.br, .com, etc.) não está incluso, salvo especificado na proposta.</p>
+
+      <h3>CLÁUSULA 9 - SUPORTE E MANUTENÇÃO</h3>
+      <p>9.1. Suporte técnico gratuito por 30 (trinta) dias após entrega final, incluindo correção de bugs e dúvidas sobre uso.<br>
+      9.2. Após o período gratuito, o suporte será cobrado conforme tabela vigente.</p>
+
+      <h3>CLÁUSULA 10 - CANCELAMENTO E RESCISÃO</h3>
+      <p>10.1. O CONTRATANTE pode cancelar o projeto mediante aviso por escrito;<br>
+      10.2. Em caso de cancelamento antes do início: devolução de 80% do valor pago;<br>
+      10.3. Após início do desenvolvimento: pagamento proporcional ao trabalho realizado (mínimo 50%);<br>
+      10.4. Após aprovação de layout: não haverá devolução.</p>
+
+      <h3>CLÁUSULA 11 - GARANTIA</h3>
+      <p>11.1. O CONTRATADO garante o funcionamento adequado do website por 30 (trinta) dias após a entrega;<br>
+      11.2. Problemas técnicos decorrentes do desenvolvimento serão corrigidos sem custo;<br>
+      11.3. Não estão cobertos pela garantia: problemas causados por alterações feitas por terceiros ou falhas de hospedagem externa.</p>
+
+      <h3>CLÁUSULA 12 - FORO</h3>
+      <p>Fica eleito o foro da Comarca de Campo Grande/MS para dirimir quaisquer dúvidas oriundas deste contrato.</p>
+
+      <div class="doc-signatures">
+        <p>Campo Grande/MS, ${today}</p>
+        <div class="signature-line">
+          <p>_______________________________________________________<br>
+          <strong>CONTRATANTE:</strong> ${escapeHtml(p.clientName)}</p>
+        </div>
+        <div class="signature-line">
+          <p>_______________________________________________________<br>
+          <strong>CONTRATADO:</strong> NATAL SILVA DE LIMA</p>
+        </div>
+      </div>
+    `;
+    printDocument('Contrato', html);
+  }
+
+  function generateReceiptPdf(id) {
+    var p = projects.find(x => x.id === id);
+    if (!p) return;
+
+    var today = new Date().toLocaleDateString('pt-BR');
+    var valFormat = parseFloat(p.totalValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+
+    var valWords = '';
+    try {
+      valWords = valorPorExtenso(p.totalValue);
+    } catch (e) {
+      valWords = '____________________________________';
+    }
+
+    var html = `
+      <h1 class="doc-title">RECIBO DE PAGAMENTO</h1>
+      <p><strong>Valor:</strong> R$ ${valFormat}</p>
+      <p><strong>Data:</strong> ${today}</p>
+
+      <h3>DADOS DO PRESTADOR (VOCÊ)</h3>
+      <div class="doc-box">
+        <p><strong>Nome:</strong> Natal Silva de Lima</p>
+        <p><strong>CPF:</strong> 902.579.101-82</p>
+        <p><strong>Endereço:</strong> Rua Mauro Rodrigues de Oliveira, 137, Parati - Campo Grande/MS</p>
+        <p><strong>Telefone:</strong> (67) 991609897 | <strong>E-mail:</strong> nataldelima@gmail.com</p>
+      </div>
+
+      <h3>DADOS DO CLIENTE</h3>
+      <div class="doc-box">
+        <p><strong>Nome/Razão Social:</strong> ${escapeHtml(p.clientName)}</p>
+        <p><strong>CPF/CNPJ:</strong> ${escapeHtml(p.cpfCnpj || '_______________________')}</p>
+        <p><strong>Endereço:</strong> ${escapeHtml(p.clientAddress || '_________________________________________________')}</p>
+        <p><strong>Telefone:</strong> ${escapeHtml(p.clientPhone || '____________________')}</p>
+      </div>
+
+      <h3>DESCRIÇÃO DO SERVIÇO</h3>
+      <p>Recebi de <strong>${escapeHtml(p.clientName)}</strong> a quantia de <strong>R$ ${valFormat}</strong> (${escapeHtml(valWords)}), referente a:</p>
+      <p><strong>Serviço prestado:</strong> Desenvolvimento de ${escapeHtml(p.type)}</p>
+      <p><strong>Forma de pagamento:</strong> ${p.installments === '1' ? 'À vista' : 'Parcelado em ' + p.installments + 'x'}</p>
+
+      <h3>DECLARAÇÃO</h3>
+      <p>Para clareza e verificação futura, firmo o presente recibo, válido como quitação da importância acima especificada.</p>
+      
+      <div class="doc-signatures" style="margin-top: 60px;">
+        <p>Campo Grande/MS, ${today}</p>
+        <div class="signature-line">
+          <p>_______________________________________________________<br>
+          <strong>NATAL SILVA DE LIMA</strong><br>
+          CPF: 902.579.101-82</p>
+        </div>
+      </div>
+      
+      <div class="doc-footer-notes" style="margin-top: 40px; font-size: 10px; color: #555;">
+        <p>• Este recibo não substitui nota fiscal quando esta for obrigatória</p>
+        <p>• Guarde este documento para comprovação de pagamento</p>
+        <p>• Em caso de MEI, será emitida nota fiscal complementar se solicitada</p>
+      </div>
+    `;
+    printDocument('Recibo', html);
+  }
+
+  /* =========================================================
      EVENTOS
      ========================================================= */
 
@@ -2092,6 +2522,26 @@
       }
     });
 
+    document.getElementById('btnNewExpense').addEventListener('click', openExpenseModal);
+    document.getElementById('expenseModalClose').addEventListener('click', closeExpenseModal);
+    document.getElementById('expenseModalCancel').addEventListener('click', closeExpenseModal);
+
+    document.getElementById('expenseForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      var data = {
+        description: document.getElementById('exDesc').value.trim(),
+        amount: document.getElementById('exAmount').value,
+        date: document.getElementById('exDate').value,
+        category: document.getElementById('exCategory').value
+      };
+      try {
+        var created = await window.fb.addExpense(data);
+        expenses.unshift(created);
+        closeExpenseModal();
+        renderFinance();
+        toast('Despesa salva!');
+      } catch (err) { toast(err.message, 'error'); }
+    });
     document.getElementById('btnRefreshData').addEventListener('click', loadAll);
     document.getElementById('btnRefreshLeads').addEventListener('click', loadAll);
 
@@ -2125,15 +2575,14 @@
             });
             if (!rep) { toast('Relatório não encontrado', 'error'); return; }
 
-            // Ajusta os campos do filtro para refletir o período do relatório
             document.getElementById('reportPeriod').value = 'custom';
             document.getElementById('reportCustomRange').classList.remove('hidden');
             document.getElementById('reportStart').value = rep.startIso.slice(0, 10);
             document.getElementById('reportEnd').value = rep.endIso.slice(0, 10);
 
             closeSavedReportsModal();
-            showView('reports', { skipReportLoad: true });   // ⬅️ evita o load duplicado
-            await loadReport(rep);                            // ⬅️ passa o relatório salvo
+            showView('reports', { skipReportLoad: true });
+            await loadReport(rep);
             toast('Relatório carregado');
           } catch (err) {
             console.error(err);
@@ -2246,10 +2695,10 @@
       settings.nextContactDays = parseInt(document.getElementById('nextContactDays').value, 10) || 3;
       settings.snoozeDays = parseInt(document.getElementById('snoozeDays').value, 10) || 3;
 
-      await saveSettings();          // ⬅️ agora é async
+      await saveSettings();
       toast('Configurações salvas');
       renderDashboard();
-      updateWppCounter();            // reflete os novos limites no badge
+      updateWppCounter();
     });
 
     // Modal edição
@@ -2295,6 +2744,15 @@
         document.getElementById('editModal').classList.add('hidden');
         renderTable();
         renderDashboard();
+
+        if (lead.status === 'convertido' && oldStatus !== 'convertido') {
+          setTimeout(() => {
+            if (confirm('🎉 Lead convertido! Deseja gerar o projeto financeiro e o contrato agora?')) {
+              showView('finance');
+              openProjectModal(null, lead);
+            }
+          }, 500);
+        }
       }
     });
 
@@ -2430,7 +2888,89 @@
       } catch (err) { toast(err.message, 'error'); }
     });
 
+    // Eventos do Módulo Financeiro
+    document.getElementById('btnNewProject').addEventListener('click', () => openProjectModal(null, null));
+    document.getElementById('projectModalClose').addEventListener('click', closeProjectModal);
+    document.getElementById('projectModalCancel').addEventListener('click', closeProjectModal);
 
+    document.getElementById('projectForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      var id = document.getElementById('pId').value;
+      var data = {
+        leadId: document.getElementById('pLeadId').value,
+        clientName: document.getElementById('pClientName').value.trim(),
+        cpfCnpj: document.getElementById('pCpfCnpj').value.trim(),
+        clientAddress: document.getElementById('pClientAddress').value.trim(),
+        clientPhone: document.getElementById('pClientPhone').value.trim(),
+        clientEmail: document.getElementById('pClientEmail').value.trim(),
+        type: document.getElementById('pType').value,
+        totalValue: document.getElementById('pTotalValue').value,
+        installments: document.getElementById('pInstallments').value,
+        projectStatus: document.getElementById('pProjectStatus').value,
+        paymentStatus: document.getElementById('pPaymentStatus').value,
+      };
+
+      try {
+        if (id) {
+          await window.fb.updateProject(id, data);
+          var idx = projects.findIndex(x => x.id === id);
+          if (idx !== -1) projects[idx] = { ...projects[idx], ...data };
+        } else {
+          var created = await window.fb.addProject(data);
+          projects.unshift(created);
+        }
+        closeProjectModal();
+        renderFinance();
+        toast('Projeto salvo!');
+      } catch (err) { toast(err.message, 'error'); }
+    });
+
+    document.getElementById('projectsBody').addEventListener('click', async (e) => {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'edit-project') openProjectModal(btn.dataset.id);
+      if (btn.dataset.action === 'pdf-contract') generateContractPdf(btn.dataset.id);
+      if (btn.dataset.action === 'pdf-receipt') generateReceiptPdf(btn.dataset.id);
+      if (btn.dataset.action === 'del-project') {
+        if (!confirm('Excluir projeto?')) return;
+        try {
+          await window.fb.deleteProject(btn.dataset.id);
+          projects = projects.filter(p => p.id !== btn.dataset.id);
+          renderFinance();
+          toast('Projeto excluído');
+        } catch (err) { toast(err.message, 'error'); }
+      }
+    });
+
+    document.getElementById('projectsBody').addEventListener('click', async (e) => {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'edit-project') openProjectModal(btn.dataset.id);
+      if (btn.dataset.action === 'pdf-contract') generateContractPdf(btn.dataset.id);
+      if (btn.dataset.action === 'pdf-receipt') generateReceiptPdf(btn.dataset.id);
+      if (btn.dataset.action === 'del-project') {
+        if (!confirm('Excluir projeto?')) return;
+        try {
+          await window.fb.deleteProject(btn.dataset.id);
+          projects = projects.filter(p => p.id !== btn.dataset.id);
+          renderFinance();
+          toast('Projeto excluído');
+        } catch (err) { toast(err.message, 'error'); }
+      }
+    });
+    document.getElementById('expensesBody').addEventListener('click', async (e) => {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'del-expense') {
+        if (!confirm('Excluir esta despesa?')) return;
+        try {
+          await window.fb.deleteExpense(btn.dataset.id);
+          expenses = expenses.filter(x => x.id !== btn.dataset.id);
+          renderFinance();
+          toast('Despesa excluída');
+        } catch (err) { toast(err.message, 'error'); }
+      }
+    });
   }
 
   /* =========================================================

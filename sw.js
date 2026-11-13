@@ -5,7 +5,7 @@
    - Navegação (index.html) → Network First com fallback
    ========================================================= */
 
-const CACHE_VERSION = 'leadmanager-v3.0.2';
+const CACHE_VERSION = 'leadmanager-v3.2.0';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 

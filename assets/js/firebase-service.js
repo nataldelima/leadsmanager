@@ -254,6 +254,52 @@ async function listInteractionsByPeriod(startIso, endIso) {
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
+
+/* =========================================================
+   PROJECTS (Módulo Financeiro / Pós-venda)
+   ========================================================= */
+async function addProject(project) {
+    const ref = await addDoc(userCol('projects'), {
+        ...project,
+        createdAt: serverTimestamp()
+    });
+    return { ...project, id: ref.id };
+}
+
+async function listProjects() {
+    const snap = await getDocs(userCol('projects'));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+async function updateProject(id, patch) {
+    const { id: _ignore, ...data } = patch;
+    await updateDoc(userDoc('projects', id), data);
+}
+
+async function deleteProject(id) {
+    await deleteDoc(userDoc('projects', id));
+}
+
+/* =========================================================
+   EXPENSES (Despesas)
+   ========================================================= */
+async function addExpense(expense) {
+    const ref = await addDoc(userCol('expenses'), {
+        ...expense,
+        createdAt: serverTimestamp()
+    });
+    return { ...expense, id: ref.id };
+}
+
+async function listExpenses() {
+    const snap = await getDocs(userCol('expenses'));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+async function deleteExpense(id) {
+    await deleteDoc(userDoc('expenses', id));
+}
+
 /* =========================================================
    EXPOSTO GLOBALMENTE
    ========================================================= */
@@ -267,7 +313,9 @@ window.fb = {
     ensureSeed, getTodayCounter, incrementDailyCounter,
     getSettings, saveSettings,
     addInteraction, listInteractionsByLead, listInteractionsByPeriod,
-    saveReport, listReports, getReportByPeriod, deleteReport
+    saveReport, listReports, getReportByPeriod, deleteReport,
+    addProject, listProjects, updateProject, deleteProject,
+    addExpense, listExpenses, deleteExpense
 };
 
 console.log('[Firebase] Serviço carregado:', firebaseConfig.projectId);
