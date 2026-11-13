@@ -802,6 +802,31 @@
     </div>
   </div>
 
+  <div id="checklistModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content" style="max-width: 800px;">
+      <header class="modal-header">
+        <div>
+          <h3 id="checklistProjectName">Acompanhamento do Projeto</h3>
+          <p id="checklistProgressText" style="font-size: 13px; color: var(--text-muted); margin-top: 4px;"></p>
+        </div>
+        <button class="modal-close" id="checklistModalClose">&times;</button>
+      </header>
+  
+      <div class="progress-bar-container">
+        <div class="progress-bar-fill" id="checklistProgressBar"></div>
+      </div>
+  
+      <div id="checklistContainer" class="checklist-wrapper">
+        <!-- As fases e checkboxes serão injetados aqui via JS -->
+      </div>
+  
+      <div class="form-actions">
+        <button type="button" class="btn btn-primary" id="checklistModalCloseBtn">Fechar</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast hidden"></div>
   <script type="module" src="assets/js/firebase-service.js"></script>
   <script src="assets/js/gemini-service.js"></script>

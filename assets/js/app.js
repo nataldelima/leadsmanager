@@ -98,6 +98,18 @@
     }
   ];
 
+  const DEFAULT_CHECKLIST = {
+    "fase1": { "label": "📋 Fase 1: Pré-venda", "tasks": ["Cliente contactado", "Interesse confirmado", "Proposta aprovada", "Contrato assinado"] },
+    "fase2": { "label": "💰 Fase 2: Pagamento", "tasks": ["Entrada recebida", "Projeto ativado no cronograma"] },
+    "fase3": { "label": "📝 Fase 3: Briefing e Materiais", "tasks": ["Briefing recebido", "Logotipo e imagens recebidos", "Textos recebidos", "Backup dos arquivos feito"] },
+    "fase4": { "label": "🎨 Fase 4: Design / Layout", "tasks": ["Referências pesquisadas", "Layout Home criado", "Versão mobile criada", "Layout aprovado pelo cliente"] },
+    "fase5": { "label": "💻 Fase 5: Desenvolvimento", "tasks": ["Ambiente configurado", "HTML/CSS base pronto", "Responsividade implementada", "Formulários e WhatsApp integrados", "SEO básico configurado"] },
+    "fase6": { "label": "✅ Fase 6: Testes", "tasks": ["Testado em Desktop", "Testado em Mobile", "Links e formulários validados", "Console sem erros"] },
+    "fase7": { "label": "🚀 Fase 7: Hospedagem e Publicação", "tasks": ["Domínio configurado", "Hospedagem e SSL ativos", "Site acessível online", "Search Console configurado"] },
+    "fase8": { "label": "📦 Fase 8: Entrega", "tasks": ["Revisão final com cliente", "Treinamento realizado", "Credenciais entregues", "Termo de entrega assinado"] },
+    "fase9": { "label": "💼 Fase 9: Pós-entrega (30 dias)", "tasks": ["Suporte iniciado", "Check-in de satisfação feito", "Depoimento coletado"] }
+  };
+
   /* =========================================================
      ESTADO GLOBAL
      ========================================================= */
@@ -1882,6 +1894,7 @@
           '<td>' + escapeHtml(p.projectStatus) + '</td>' +
           '<td>' + formatDate(p.createdAt ? new Date(p.createdAt.seconds * 1000).toISOString() : new Date().toISOString()) + '</td>' +
           '<td class="col-actions">' +
+          '<button type="button" class="btn-icon" title="Acompanhamento" data-action="checklist" data-id="' + p.id + '" style="color: var(--brand-gold-dark);">📋</button>' +
           '<button type="button" class="btn-icon" title="Gerar Contrato" data-action="pdf-contract" data-id="' + p.id + '">📄</button>' +
           '<button type="button" class="btn-icon" title="Gerar Recibo" data-action="pdf-receipt" data-id="' + p.id + '">🧾</button>' +
           '<button type="button" class="btn-icon" title="Editar" data-action="edit-project" data-id="' + p.id + '">✏️</button>' +
@@ -2386,6 +2399,115 @@
     }, 100);
   }
 
+  /* =========================================================
+   CHECKLIST DE PROJETO
+   ========================================================= */
+  let currentChecklistProject = null;
+
+  function openChecklistModal(projectId) {
+    var p = projects.find(x => x.id === projectId);
+    if (!p) return;
+
+    currentChecklistProject = p;
+    document.getElementById('checklistProjectName').textContent = 'Acompanhamento: ' + p.clientName;
+
+    // Se o projeto não tem checklist, cria uma cópia do padrão
+    if (!p.checklist) {
+      p.checklist = JSON.parse(JSON.stringify(DEFAULT_CHECKLIST));
+      // Converte as tasks de array de strings para array de objetos { text, done }
+      for (let key in p.checklist) {
+        p.checklist[key].tasks = p.checklist[key].tasks.map(t => ({ text: t, done: false }));
+      }
+    }
+
+    renderChecklistUI();
+    document.getElementById('checklistModal').classList.remove('hidden');
+  }
+
+  function renderChecklistUI() {
+    var container = document.getElementById('checklistContainer');
+    var p = currentChecklistProject;
+    var html = '';
+    var totalTasks = 0;
+    var doneTasks = 0;
+
+    var sortedKeys = Object.keys(p.checklist).sort((a, b) => {
+      var numA = parseInt(a.replace(/\D/g, ''), 10) || 0;
+      var numB = parseInt(b.replace(/\D/g, ''), 10) || 0;
+      return numA - numB;
+    });
+
+    for (let i = 0; i < sortedKeys.length; i++) {
+      let key = sortedKeys[i];
+      var phase = p.checklist[key];
+      var phaseDone = 0;
+
+      var tasksHtml = phase.tasks.map((task, idx) => {
+        totalTasks++;
+        if (task.done) { doneTasks++; phaseDone++; }
+
+        return '<label class="checklist-label ' + (task.done ? 'checked' : '') + '">' +
+          '<input type="checkbox" data-phase="' + key + '" data-idx="' + idx + '" ' + (task.done ? 'checked' : '') + '>' +
+          '<span>' + escapeHtml(task.text) + '</span>' +
+          '</label>';
+      }).join('');
+
+      // Abre automaticamente a fase se ela não estiver 100% concluída
+      var isOpen = phaseDone < phase.tasks.length ? 'open' : '';
+
+      html += '<details class="checklist-phase" ' + isOpen + '>' +
+        '<summary>' + escapeHtml(phase.label) + ' (' + phaseDone + '/' + phase.tasks.length + ')</summary>' +
+        '<div class="checklist-tasks">' + tasksHtml + '</div>' +
+        '</details>';
+    }
+
+    container.innerHTML = html;
+
+    // Atualiza a barra de progresso
+    var pct = totalTasks === 0 ? 0 : Math.round((doneTasks / totalTasks) * 100);
+    var bar = document.getElementById('checklistProgressBar');
+    bar.style.width = pct + '%';
+
+    // Muda a cor se chegar a 100%
+    bar.style.background = pct === 100 ? 'var(--success)' : 'var(--brand-gold)';
+    document.getElementById('checklistProgressText').textContent = pct + '% concluído (' + doneTasks + ' de ' + totalTasks + ' tarefas)';
+
+    // Adiciona evento a cada checkbox
+    container.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+      checkbox.addEventListener('change', async function () {
+        var phaseKey = this.dataset.phase;
+        var taskIdx = parseInt(this.dataset.idx, 10);
+
+        // Atualiza no objeto local
+        p.checklist[phaseKey].tasks[taskIdx].done = this.checked;
+
+        // Salva no Firestore silenciosamente
+        try {
+          await window.fb.updateProject(p.id, { checklist: p.checklist });
+        } catch (err) {
+          console.error('Erro ao salvar checklist:', err);
+          toast('Erro ao salvar progresso', 'error');
+        }
+
+        // Atualiza visual (marca o texto com riscado e recalcula progresso)
+        this.parentElement.classList.toggle('checked', this.checked);
+        var openDetails = Array.from(container.querySelectorAll('details[open]')).map(d => d.querySelector('summary').textContent.split(' (')[0]);
+        renderChecklistUI();
+
+        // Reabre as abas que estavam abertas
+        container.querySelectorAll('details').forEach(d => {
+          var title = d.querySelector('summary').textContent.split(' (')[0];
+          if (openDetails.includes(title)) d.setAttribute('open', 'open');
+        });
+      });
+    });
+  }
+
+  function closeChecklistModal() {
+    document.getElementById('checklistModal').classList.add('hidden');
+    currentChecklistProject = null;
+  }
+
   function bindEvents() {
     var btnHamburger = document.getElementById('btnHamburger');
     if (btnHamburger) {
@@ -2409,6 +2531,9 @@
     });
 
     document.getElementById('btnLogout').addEventListener('click', logout);
+
+    document.getElementById('checklistModalClose').addEventListener('click', closeChecklistModal);
+    document.getElementById('checklistModalCloseBtn').addEventListener('click', closeChecklistModal);
 
     // Relatórios
     var rp = document.getElementById('reportPeriod');
@@ -2928,6 +3053,7 @@
     document.getElementById('projectsBody').addEventListener('click', async (e) => {
       var btn = e.target.closest('[data-action]');
       if (!btn) return;
+      if (btn.dataset.action === 'checklist') openChecklistModal(btn.dataset.id);
       if (btn.dataset.action === 'edit-project') openProjectModal(btn.dataset.id);
       if (btn.dataset.action === 'pdf-contract') generateContractPdf(btn.dataset.id);
       if (btn.dataset.action === 'pdf-receipt') generateReceiptPdf(btn.dataset.id);
@@ -2942,22 +3068,6 @@
       }
     });
 
-    document.getElementById('projectsBody').addEventListener('click', async (e) => {
-      var btn = e.target.closest('[data-action]');
-      if (!btn) return;
-      if (btn.dataset.action === 'edit-project') openProjectModal(btn.dataset.id);
-      if (btn.dataset.action === 'pdf-contract') generateContractPdf(btn.dataset.id);
-      if (btn.dataset.action === 'pdf-receipt') generateReceiptPdf(btn.dataset.id);
-      if (btn.dataset.action === 'del-project') {
-        if (!confirm('Excluir projeto?')) return;
-        try {
-          await window.fb.deleteProject(btn.dataset.id);
-          projects = projects.filter(p => p.id !== btn.dataset.id);
-          renderFinance();
-          toast('Projeto excluído');
-        } catch (err) { toast(err.message, 'error'); }
-      }
-    });
     document.getElementById('expensesBody').addEventListener('click', async (e) => {
       var btn = e.target.closest('[data-action]');
       if (!btn) return;
