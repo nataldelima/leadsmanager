@@ -3138,3 +3138,94 @@ img:not(.user-avatar):not(.logo img) {
     letter-spacing: 0.5px;
   }
 }
+
+/* =========================================================
+   RENDERIZAÇÃO DO MARKDOWN DA IA NA TELA
+   ========================================================= */
+.ai-markdown-content {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  padding: 4px;
+}
+
+.ai-markdown-content h1,
+.ai-markdown-content h2,
+.ai-markdown-content h3 {
+  color: var(--brand-navy);
+  margin-top: 24px;
+  margin-bottom: 12px;
+  font-weight: 700;
+}
+
+.ai-markdown-content h2 {
+  font-size: 16px;
+  border-left: 4px solid var(--brand-gold);
+  padding-left: 10px;
+  background: linear-gradient(90deg, rgba(240, 180, 41, 0.1) 0%, transparent 100%);
+  padding: 8px 10px;
+  border-radius: 0 4px 4px 0;
+}
+
+.ai-markdown-content h3 {
+  font-size: 14px;
+  color: var(--brand-gold-dark);
+}
+
+.ai-markdown-content p {
+  margin-bottom: 12px;
+}
+
+.ai-markdown-content ul {
+  padding-left: 20px;
+  margin-bottom: 16px;
+}
+
+.ai-markdown-content li {
+  margin-bottom: 6px;
+}
+
+.ai-markdown-content strong {
+  color: var(--brand-navy);
+  font-weight: 700;
+}
+
+.ai-markdown-content hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 24px 0;
+}
+
+/* Tabelas no relatório (Visual de Gráfico) */
+.ai-markdown-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 13px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.ai-markdown-content th {
+  background: var(--brand-navy);
+  color: #fff;
+  font-weight: 600;
+  text-align: left;
+  padding: 10px 14px;
+}
+
+.ai-markdown-content td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: #fff;
+}
+
+.ai-markdown-content tr:nth-child(even) td {
+  background: var(--brand-bg);
+}
+
+.ai-markdown-content .md-num {
+  margin-bottom: 8px;
+  font-weight: 500;
+}

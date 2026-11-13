@@ -19,11 +19,10 @@ async function generateAnalyticalReport(interactionsData) {
 
 **REGRAS OBRIGATÓRIAS DE FORMATAÇÃO:**
 - Identifique cada lead SEMPRE pelo nome (campo "lead"). Nunca use IDs, códigos ou hashes.
-- Ao citar um lead no texto, use negrito: **Nome do Lead**.
-- Use markdown limpo: títulos com "##" (nunca duplique, tipo "## ##"), listas com "-", negrito com "**".
-- NÃO use cabeçalhos com numeração duplicada. Exemplo correto: "## 1. Resumo Executivo". Exemplo errado: "## ## 1. Resumo Executivo".
-- Não use tabelas markdown complexas; prefira listas.
-- Se um lead aparecer várias vezes, agrupe e cite uma vez.
+- Use markdown limpo: títulos com "##", listas com "-", negrito com "**".
+- NÃO use cabeçalhos com numeração duplicada (ex: use "## 1. Resumo", e não "## ## 1. Resumo").
+- Para as métricas, use tabelas markdown (ex: | Métrica | Valor |) para que fiquem visualmente agradáveis.
+- Seja direto e consultivo.
 
 **Dados de Interações do Período:**
 ${sanitized.map(function (i) { return JSON.stringify(i); }).join('\n')}
@@ -39,11 +38,27 @@ Com base nos status "de" e "para", descreva o fluxo dos leads. Quantos avançara
 ## 3. Análise de Oportunidades
 Identifique os leads com maior potencial (nome, não ID). Quais são as principais objeções ou motivos de perda? Use o campo "template" para inferir a abordagem.
 
-## 4. Principais Métricas
-Calcule a taxa de resposta (leads que responderam / total contatados) e a taxa de conversão para "Proposta".
+## 4. Métricas do Período
+Crie uma tabela markdown com as principais métricas calculadas (ex: Total de Contatos, Taxa de Resposta, Propostas, etc).
 
 ## 5. Pontos de Melhoria e Recomendações
-Sugira 3 melhorias acionáveis para o próximo ciclo, baseadas nos dados.`;
+Sugira 3 melhorias acionáveis baseadas nos dados.
+
+## 6. 💭 Reflexão Semanal e Plano de Ação
+(Esta é a parte mais importante para o gestor. Seja analítico e motivador).
+
+### ✅ O QUE FUNCIONOU BEM?
+(Liste 3 a 5 pontos fortes observados nas interações)
+
+### 📈 O QUE PODE MELHORAR?
+(Identifique 3 a 5 áreas de melhoria, gargalos ou falhas de abordagem)
+
+### 💡 PRINCIPAIS APRENDIZADOS
+(O que a IA aprendeu com esses dados que deve ser aplicado na próxima semana?)
+
+### 🎯 METAS AJUSTADAS PRÓXIMA SEMANA
+(Crie uma tabela markdown com metas sugeridas para a próxima semana, baseadas no volume atual. Exemplo de colunas: | Meta | Atual | Objetivo |).
+Inclua metas para: CONTATOS, CONVERSAS, PROPOSTAS, FECHAMENTOS.`;
 
     const MAX_TRIES = 4;
     let lastError = null;
@@ -53,12 +68,12 @@ Sugira 3 melhorias acionáveis para o próximo ciclo, baseadas nos dados.`;
             const response = await fetch(GEMINI_PROXY_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: prompt }),   // ⬅️ formato que o Worker espera
+                body: JSON.stringify({ prompt: prompt }),
             });
 
             if (response.ok) {
                 const result = await response.json();
-                return result.text;                          // ⬅️ formato que o Worker devolve
+                return result.text;
             }
 
             if (response.status === 429 || response.status === 503) {
@@ -90,7 +105,6 @@ Sugira 3 melhorias acionáveis para o próximo ciclo, baseadas nos dados.`;
 
     throw lastError || new Error('Falha após múltiplas tentativas');
 }
-
 // Expõe a função globalmente para o app.js
 window.gemini = {
     generateAnalyticalReport,

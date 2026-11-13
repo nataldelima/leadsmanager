@@ -1469,9 +1469,7 @@
     reportData.savedReportId = savedReport.id;
     reportData.aiContent = savedReport.content;
     var contentEl = document.getElementById('aiReportContent');
-    contentEl.innerHTML =
-      '<pre style="white-space: pre-wrap; font-family: inherit;">' +
-      escapeHtml(savedReport.content) + '</pre>';
+    contentEl.innerHTML = '<div class="ai-markdown-content">' + markdownToHtml(savedReport.content) + '</div>';
     document.getElementById('btnSaveReport').classList.add('hidden');
     document.getElementById('btnExportReportPdf').classList.remove('hidden');
   }
@@ -1483,12 +1481,11 @@
 
     try {
       var saved = await window.fb.getReportByPeriod(startIso, endIso);
+
       if (saved && saved.content) {
         reportData.savedReportId = saved.id;
         reportData.aiContent = saved.content;
-        contentEl.innerHTML =
-          '<pre style="white-space: pre-wrap; font-family: inherit;">' +
-          escapeHtml(saved.content) + '</pre>';
+        contentEl.innerHTML = '<div class="ai-markdown-content">' + markdownToHtml(saved.content) + '</div>';
         btnSave.classList.add('hidden');
         btnPdf.classList.remove('hidden');
       } else {
@@ -1502,6 +1499,7 @@
       console.warn('Falha ao carregar relatório salvo:', e);
     }
   }
+
 
   function renderReport() {
     var list = reportData.interactions;
@@ -1730,9 +1728,7 @@
       const reportText = await window.gemini.generateAnalyticalReport(reportData.interactions);
       reportData.aiContent = reportText;
       reportData.savedReportId = null;
-      contentEl.innerHTML =
-        '<pre style="white-space: pre-wrap; font-family: inherit;">' +
-        escapeHtml(reportText) + '</pre>';
+      contentEl.innerHTML = '<div class="ai-markdown-content">' + markdownToHtml(reportText) + '</div>';
       btnSave.classList.remove('hidden');
       btnPdf.classList.remove('hidden');
       toast('Análise gerada. Salve para não perder.');
